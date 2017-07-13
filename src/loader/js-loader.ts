@@ -1,17 +1,18 @@
-import { Loader } from './loader';
-function createScriptDom(){
-    return document.createElement('script');
-}
-class JsLoader extends Loader{
-    option:Object = {
-        fileRule:/\.(js|ts)$/
+import { Loader,LoaderOption } from './loader';
+class JsLoader extends Loader {
+    static fileRule:RegExp = /\.(js|ts)$/;
+    static urlMatch = function (url) {
+        return JsLoader.fileRule.test(url);
     };
-    ele = null;
-    constructor(option){
-        Object.assign(this.option,option);
-        this.ele = createScriptDom();
+    option:LoaderOption = {
+        url:''
+    };
+    createDom(){
+        this.el = document.createElement('script');
     }
-    appendToDom(){
-        document.head.appendChild(this.ele);
+    appendToDom() {
+        document.head.appendChild(this.el);
     }
 }
+Loader.loaders.push(JsLoader);
+export { JsLoader }

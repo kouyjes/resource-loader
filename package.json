@@ -1,0 +1,39 @@
+{
+  "name": "resource-loader",
+  "version": "1.0.0",
+  "description": "js css loader",
+  "main": "index.js",
+  "directories": {
+    "example": "example"
+  },
+  "scripts": {
+    "compile":"rollup -c",
+    "build": "rollup -c && uglifyjs dest/resource-loader.js > dest/resource-loader.min.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kouyjes/resource-loader.git"
+  },
+  "keywords": [
+    "js",
+    "css",
+    "js-loader",
+    "css-loader",
+    "loader"
+  ],
+  "devDependencies": {
+    "rollup": "^0.36.3",
+    "rollup-plugin-scss": "^0.1.0",
+    "rollup-plugin-typescript": "^0.8.1",
+    "rollup-plugin-uglify": "^1.0.1",
+    "ruby": "^0.6.1",
+    "scss": "^0.2.4"
+  },
+  "author": "kouyj",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/kouyjes/resource-loader/issues"
+  },
+  "homepage": "https://github.com/kouyjes/resource-loader#readme"
+}

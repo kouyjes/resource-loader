@@ -1,23 +1,25 @@
-import { Loader } from './loader';
-function createCssLinkDom(){
-    var el = document.createElement('link');
-    el.type = 'text/css';
-    el.rel = 'stylesheet';
-    return el;
-}
-class CssLoader extends Loader{
-    option:Object = {
-        fileRule:/\.(css|less|scss|sass)$/
+import { Loader,LoaderOption } from './loader';
+class CssLoader extends Loader {
+    static fileRule:RegExp = /\.(css|less|scss|sass)$/;
+    static urlMatch = function (url) {
+        return CssLoader.fileRule.test(url);
     };
-    ele = null;
-    constructor(option){
-        Object.assign(this.option,option);
-        this.ele = createCssLinkDom();
+    option:LoaderOption = {
+        url:''
+    };
+    createDom(){
+        var el = document.createElement('link');
+        el.type = 'text/css';
+        el.rel = 'stylesheet';
+        this.el = el;
     }
-    initResourceUrl(){
-        this.ele.href = this.option.src;
+    initResourceUrl() {
+        this.el.href = this.option.url;
     }
-    appendToDom(){
-        document.head.appendChild(this.ele);
+
+    appendToDom() {
+        document.head.appendChild(this.el);
     }
 }
+Loader.loaders.push(CssLoader);
+export { CssLoader }
