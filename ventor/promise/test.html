@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="Promise.js"></script>
+        <script>
+            function asyncFn(fn,time){
+                time = time || Math.random() * 1000;
+                setTimeout(function () {
+                    fn();
+                },time)
+            }
+            var promises = [];
+            for(var i = 0;i < 10;i++){
+                promises.push(new $Promise(function (resolve,reject) {
+                    var data = 'data_' + i;
+                    asyncFn(function () {
+                        resolve(data);
+                    });
+                }));
+            }
+            /*promises.push(new $Promise(function (resolve,reject) {
+                asyncFn(function () {
+                    reject();
+                },5000);
+            }));*/
+            $Promise.all(promises).then(function (d) {
+                return new Promise(function (resolve,reject) {
+                    resolve('new Data:' + d.join(','));
+                })
+            }).then(function (r) {
+                console.log(r);
+            });
+        </script>
+    </head>
+    <body>
+
+    </body>
+</html>
+
