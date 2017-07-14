@@ -13,7 +13,7 @@ class ResourceUrl{
         }
         urlDom.href = baseURI;
         var prefixUrl = urlDom.href;
-        prefixUrl.replace(/\/+$/,'');
+        prefixUrl = prefixUrl.replace(/\/+$/,'');
         url = url.replace(/^ \/+/,'');
         return prefixUrl + '/' + url;
     };
