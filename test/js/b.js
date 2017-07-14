@@ -1,0 +1,1 @@
+console.log('b.js loaded at time: ' + (new Date()).getTime());

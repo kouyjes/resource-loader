@@ -3,13 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
+    <script src="../dest/resource-loader.js"></script>
     <script>
-        function loadScript(){
-
+        var loader = new HERE.ResourceLoader({
+            baseURI:'../',
+            timeout:8000
+            //loaderTimeout:2000
+        });
+        var resource = {
+            type:'js',
+            serial:true,
+            urls:['test/js/a.js','http://localhost:7771/test/test.js','test/js/b.js'],
+            dependence:{
+                type:'css',
+                serial:true,
+                urls:['http://localhost:7771/test/test.css','http://localhost:7771/test/test1.css']
+            }
+        };
+        function loadResource(){
+            loader.load(resource).then(function () {
+                console.log('loaded finish ! :' + (new Date).getTime());
+            },function(e){
+                console.log(e);
+            });
         }
     </script>
 </head>
 <body>
-    <button onclick="loadScript()">load</button>
+    <button onclick="loadResource()">load</button>
 </body>
 </html>
