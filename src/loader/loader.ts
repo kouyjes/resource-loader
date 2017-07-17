@@ -7,9 +7,18 @@ interface LoaderOption{
     url:String;
     timeout?:number;
 }
+enum LoaderState{
+    Init = 'inited',
+    Pending = 'pending',
+    Finished = 'finished',
+    Error = 'error'
+}
 class Loader {
     option:LoaderOption = {
         url:''
+    };
+    status = {
+        state:LoaderState.Init
     };
     el = null;
     constructor(option?:LoaderOption) {
@@ -34,6 +43,12 @@ class Loader {
         evt.initEvent('timeout',false,false);
         return evt;
     }
+    timeout(){
+        var el = this.el;
+        if(el.onerror){
+            el.onerror(this.initTimeoutEvent());
+        }
+    }
     load() {
         var _ = this;
         var el = this.el;
@@ -50,11 +65,13 @@ class Loader {
             if (stateText && !/^c|loade/.test(stateText)) return;
             clearTimeout(timeoutId);
             el.onload = el['onreadystatechange'] = null;
+            _.status.state = LoaderState.Finished;
             onLoadFn.apply(this, arguments);
         };
         el.onerror = function () {
-            el.onerror = null;
+            this.onTimeout = el.onerror = null;
             clearTimeout(timeoutId);
+            _.status.state = LoaderState.Error;
             onErrorFn.apply(this, arguments);
             _.removeFromDom();
         };
@@ -62,15 +79,14 @@ class Loader {
         this.initResourceUrl();
 
         this.appendToDom();
+        _.status.state = LoaderState.Pending;
 
         timeoutId = timeout && setTimeout(function () {
             isTimeout = true;
-            if(el.onerror){
-                el.onerror(_.initTimeoutEvent());
-            }
+            _.timeout();
         },timeout);
         return promise;
     }
 }
 
-export { Loader,LoaderOption }
+export { Loader,LoaderOption,LoaderState }

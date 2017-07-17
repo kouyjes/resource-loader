@@ -1,4 +1,4 @@
-import { Loader } from './loader/loader';
+import { Loader,LoaderState } from './loader/loader';
 import { JsLoader } from './loader/js-loader';
 import { CssLoader } from './loader/css-loader';
 import { ResourceUrl } from './url-parser';
@@ -23,7 +23,7 @@ class ResourceLoader {
     static registerLoader(type:String,loader:Loader){
         loaders[type] = loader;
         return ResourceLoader;
-    }
+    };
     loadedUrl:Object = {};
     option:ResourceLoaderOption = {
 
@@ -39,33 +39,56 @@ class ResourceLoader {
         evt.initEvent('timeout',false,false);
         return evt;
     }
-    load(resource:Resource){
-        var _ = this;
-        var timeout = this.option.timeout;
-        var promise = this._load(resource);
-        if(!timeout){
-            return promise;
-        }
-        var isDirty = false;
-        return new Promise(function (resolve,reject) {
-            setTimeout(function () {
-                isDirty = true;
-                reject(_.initTimeoutEvent())
-            },timeout);
-            promise.then(function (d) {
-                !isDirty && resolve(d);
-            }, function (d) {
-                !isDirty && reject(d);
-            });
+    private timeout(runtimeCache){
+        runtimeCache.loaders.filter(function (loader) {
+            if(loader.status.state === LoaderState.Finished){
+                return true;
+            }else{
+                loader.timeout();
+            }
         });
     }
-    _load(resource:Resource){
+    load(resource:Resource){
+        var _ = this;
+        var runtimeCache = {
+                loaders:[]
+            };
+        try{
+            var timeout = this.option.timeout;
+            var promise = this._load(resource,runtimeCache);
+            if(!timeout){
+                return promise;
+            }
+            var isDirty = false;
+            return new Promise(function (resolve,reject) {
+                setTimeout(function () {
+                    try{
+                        isDirty = true;
+                        reject(_.initTimeoutEvent())
+                    }finally {
+                        _.timeout(runtimeCache);
+                    }
+                },timeout);
+                promise.then(function (d) {
+                    !isDirty && resolve(d);
+                }, function (d) {
+                    !isDirty && reject(d);
+                });
+            });
+        }finally {
+        }
+    }
+    _load(resource:Resource,runtimeCache?){
+
+        var runtimeCache = runtimeCache || {
+            loaders:[]
+        };
         var _ = this;
 
         var promise;
 
         if(resource.dependence){
-            promise = _._load(resource.dependence);
+            promise = _._load(resource.dependence,runtimeCache);
         }
 
         function initiateLoader(url){
@@ -81,6 +104,7 @@ class ResourceLoader {
                 url:url,
                 timeout:_.option.loaderTimeout
             });
+            runtimeCache.loaders.push(loader);
             return loader;
         }
         function loadFinishFn(url){

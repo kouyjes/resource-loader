@@ -15,10 +15,20 @@ function wrpperFn(fn) {
         fn.apply(this, arguments);
     };
 }
+var LoaderState;
+(function (LoaderState) {
+    LoaderState[LoaderState["Init"] = 'inited'] = "Init";
+    LoaderState[LoaderState["Pending"] = 'pending'] = "Pending";
+    LoaderState[LoaderState["Finished"] = 'finished'] = "Finished";
+    LoaderState[LoaderState["Error"] = 'error'] = "Error";
+})(LoaderState || (LoaderState = {}));
 var Loader = (function () {
     function Loader(option) {
         this.option = {
             url: ''
+        };
+        this.status = {
+            state: LoaderState.Init
         };
         this.el = null;
         if (option) {
@@ -42,6 +52,12 @@ var Loader = (function () {
         evt.initEvent('timeout', false, false);
         return evt;
     };
+    Loader.prototype.timeout = function () {
+        var el = this.el;
+        if (el.onerror) {
+            el.onerror(this.initTimeoutEvent());
+        }
+    };
     Loader.prototype.load = function () {
         var _ = this;
         var el = this.el;
@@ -59,21 +75,22 @@ var Loader = (function () {
                 return;
             clearTimeout(timeoutId);
             el.onload = el['onreadystatechange'] = null;
+            _.status.state = LoaderState.Finished;
             onLoadFn.apply(this, arguments);
         };
         el.onerror = function () {
-            el.onerror = null;
+            this.onTimeout = el.onerror = null;
             clearTimeout(timeoutId);
+            _.status.state = LoaderState.Error;
             onErrorFn.apply(this, arguments);
             _.removeFromDom();
         };
         this.initResourceUrl();
         this.appendToDom();
+        _.status.state = LoaderState.Pending;
         timeoutId = timeout && setTimeout(function () {
             isTimeout = true;
-            if (el.onerror) {
-                el.onerror(_.initTimeoutEvent());
-            }
+            _.timeout();
         }, timeout);
         return promise;
     };
@@ -193,36 +210,62 @@ var ResourceLoader = (function () {
         loaders[type] = loader;
         return ResourceLoader;
     };
+    
     ResourceLoader.prototype.initTimeoutEvent = function () {
         var evt = document.createEvent('CustomEvent');
         evt.initEvent('timeout', false, false);
         return evt;
     };
-    ResourceLoader.prototype.load = function (resource) {
-        var _ = this;
-        var timeout = this.option.timeout;
-        var promise = this._load(resource);
-        if (!timeout) {
-            return promise;
-        }
-        var isDirty = false;
-        return new Promise(function (resolve, reject) {
-            setTimeout(function () {
-                isDirty = true;
-                reject(_.initTimeoutEvent());
-            }, timeout);
-            promise.then(function (d) {
-                !isDirty && resolve(d);
-            }, function (d) {
-                !isDirty && reject(d);
-            });
+    ResourceLoader.prototype.timeout = function (runtimeCache) {
+        runtimeCache.loaders.filter(function (loader) {
+            if (loader.status.state === LoaderState.Finished) {
+                return true;
+            }
+            else {
+                loader.timeout();
+            }
         });
     };
-    ResourceLoader.prototype._load = function (resource) {
+    ResourceLoader.prototype.load = function (resource) {
+        var _ = this;
+        var runtimeCache = {
+            loaders: []
+        };
+        try {
+            var timeout = this.option.timeout;
+            var promise = this._load(resource, runtimeCache);
+            if (!timeout) {
+                return promise;
+            }
+            var isDirty = false;
+            return new Promise(function (resolve, reject) {
+                setTimeout(function () {
+                    try {
+                        isDirty = true;
+                        reject(_.initTimeoutEvent());
+                    }
+                    finally {
+                        _.timeout(runtimeCache);
+                    }
+                }, timeout);
+                promise.then(function (d) {
+                    !isDirty && resolve(d);
+                }, function (d) {
+                    !isDirty && reject(d);
+                });
+            });
+        }
+        finally {
+        }
+    };
+    ResourceLoader.prototype._load = function (resource, runtimeCache) {
+        var runtimeCache = runtimeCache || {
+            loaders: []
+        };
         var _ = this;
         var promise;
         if (resource.dependence) {
-            promise = _._load(resource.dependence);
+            promise = _._load(resource.dependence, runtimeCache);
         }
         function initiateLoader(url) {
             var type = resource.type;
@@ -237,6 +280,7 @@ var ResourceLoader = (function () {
                 url: url,
                 timeout: _.option.loaderTimeout
             });
+            runtimeCache.loaders.push(loader);
             return loader;
         }
         function loadFinishFn(url) {
