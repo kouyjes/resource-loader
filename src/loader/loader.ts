@@ -19,6 +19,10 @@ class Loader {
         this.createDom();
     }
     appendToDom() {
+        document.head.appendChild(this.el);
+    }
+    removeFromDom(){
+        document.head.removeChild(this.el);
     }
     createDom(){
     }
@@ -33,9 +37,9 @@ class Loader {
     load() {
         var _ = this;
         var el = this.el;
-        var onloadFn, onErrorFn;
+        var onLoadFn, onErrorFn;
         var promise = new Promise(function (resolve, reject) {
-            onloadFn = wrpperFn(resolve);
+            onLoadFn = wrpperFn(resolve);
             onErrorFn = wrpperFn(reject);
         });
         var timeout = this.option.timeout;
@@ -46,12 +50,13 @@ class Loader {
             if (stateText && !/^c|loade/.test(stateText)) return;
             clearTimeout(timeoutId);
             el.onload = el['onreadystatechange'] = null;
-            onloadFn.apply(this, arguments);
+            onLoadFn.apply(this, arguments);
         };
         el.onerror = function () {
             el.onerror = null;
             clearTimeout(timeoutId);
             onErrorFn.apply(this, arguments);
+            _.removeFromDom();
         };
 
         this.initResourceUrl();

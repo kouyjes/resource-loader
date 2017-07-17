@@ -9,10 +9,6 @@ class CssLoader extends Loader {
     initResourceUrl() {
         this.el.href = this.option.url;
     }
-
-    appendToDom() {
-        document.head.appendChild(this.el);
-    }
     private isUseCssLoadPatch(){
         var useCssLoadPatch = false;
         var ua = navigator.userAgent.toLowerCase();

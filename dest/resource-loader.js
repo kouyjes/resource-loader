@@ -27,6 +27,10 @@ var Loader = (function () {
         this.createDom();
     }
     Loader.prototype.appendToDom = function () {
+        document.head.appendChild(this.el);
+    };
+    Loader.prototype.removeFromDom = function () {
+        document.head.removeChild(this.el);
     };
     Loader.prototype.createDom = function () {
     };
@@ -41,9 +45,9 @@ var Loader = (function () {
     Loader.prototype.load = function () {
         var _ = this;
         var el = this.el;
-        var onloadFn, onErrorFn;
+        var onLoadFn, onErrorFn;
         var promise = new Promise(function (resolve, reject) {
-            onloadFn = wrpperFn(resolve);
+            onLoadFn = wrpperFn(resolve);
             onErrorFn = wrpperFn(reject);
         });
         var timeout = this.option.timeout;
@@ -55,12 +59,13 @@ var Loader = (function () {
                 return;
             clearTimeout(timeoutId);
             el.onload = el['onreadystatechange'] = null;
-            onloadFn.apply(this, arguments);
+            onLoadFn.apply(this, arguments);
         };
         el.onerror = function () {
             el.onerror = null;
             clearTimeout(timeoutId);
             onErrorFn.apply(this, arguments);
+            _.removeFromDom();
         };
         this.initResourceUrl();
         this.appendToDom();
@@ -83,9 +88,6 @@ var JsLoader = (function (_super) {
     JsLoader.prototype.createDom = function () {
         this.el = document.createElement('script');
     };
-    JsLoader.prototype.appendToDom = function () {
-        document.head.appendChild(this.el);
-    };
     return JsLoader;
 }(Loader));
 
@@ -102,9 +104,6 @@ var CssLoader = (function (_super) {
     };
     CssLoader.prototype.initResourceUrl = function () {
         this.el.href = this.option.url;
-    };
-    CssLoader.prototype.appendToDom = function () {
-        document.head.appendChild(this.el);
     };
     CssLoader.prototype.isUseCssLoadPatch = function () {
         var useCssLoadPatch = false;
