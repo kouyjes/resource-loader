@@ -82,7 +82,7 @@ class Loader {
             onLoadFn.apply(this, arguments);
         };
         el.onerror = function () {
-            this.onTimeout = el.onerror = null;
+            el.onerror = null;
             clearTimeout(timeoutId);
             _.status.state = LoaderState.Error;
             onErrorFn.apply(this, arguments);
