@@ -7,7 +7,7 @@ class CssLoader extends Loader {
         this.el = el;
     }
     initResourceUrl() {
-        this.el.href = this.option.url;
+        this.el['href'] = this.tokenUrl();
     }
     private isUseCssLoadPatch(){
         var useCssLoadPatch = false;

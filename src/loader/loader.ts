@@ -5,6 +5,7 @@ function wrpperFn(fn) {
 }
 interface LoaderOption{
     url:String;
+    token?:String|number;
     timeout?:number;
 }
 enum LoaderState{
@@ -36,7 +37,19 @@ class Loader {
     createDom(){
     }
     initResourceUrl() {
-        this.el.src = this.option.url;
+        this.el['src'] = this.tokenUrl();
+    }
+    tokenUrl(){
+        var url = this.option.url;
+        if(!this.option.token){
+            return url;
+        }
+        var token = 'token=' + this.option.token;
+        if(this.option.url.indexOf('?') === -1){
+            token = '?' + token;
+        }
+        url = url + token;
+        return url;
     }
     initTimeoutEvent(){
         var evt = document.createEvent('CustomEvent');

@@ -2,8 +2,11 @@ import { Loader,LoaderState } from './loader/loader';
 import { JsLoader } from './loader/js-loader';
 import { CssLoader } from './loader/css-loader';
 import { ResourceUrl } from './url-parser';
+import { polyfill } from './polyfill';
+polyfill();
 interface ResourceLoaderOption {
     baseURI?:String;
+    token?:String|number
     useCache?:Boolean;
     loaderTimeout?:number;
     timeout?:number;
@@ -102,6 +105,7 @@ class ResourceLoader {
             }
             var loader = new loaderFn({
                 url:url,
+                token:_.option.token,
                 timeout:_.option.loaderTimeout
             });
             runtimeCache.loaders.push(loader);

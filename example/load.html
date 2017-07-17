@@ -4,9 +4,14 @@
     <meta charset="UTF-8">
     <title>Title</title>
     <script src="../dest/resource-loader.js"></script>
+    <script src="./promise.js"></script>
     <script>
+        if(!window.Promise){
+            window.Promise = HERE.$Promise;
+        }
         var loader = new HERE.ResourceLoader({
             baseURI:'../',
+            token:Math.random(),
             timeout:6000
             //loaderTimeout:3000
         });

@@ -45,7 +45,19 @@ var Loader = (function () {
     Loader.prototype.createDom = function () {
     };
     Loader.prototype.initResourceUrl = function () {
-        this.el.src = this.option.url;
+        this.el['src'] = this.tokenUrl();
+    };
+    Loader.prototype.tokenUrl = function () {
+        var url = this.option.url;
+        if (!this.option.token) {
+            return url;
+        }
+        var token = 'token=' + this.option.token;
+        if (this.option.url.indexOf('?') === -1) {
+            token = '?' + token;
+        }
+        url = url + token;
+        return url;
     };
     Loader.prototype.initTimeoutEvent = function () {
         var evt = document.createEvent('CustomEvent');
@@ -120,7 +132,7 @@ var CssLoader = (function (_super) {
         this.el = el;
     };
     CssLoader.prototype.initResourceUrl = function () {
-        this.el.href = this.option.url;
+        this.el['href'] = this.tokenUrl();
     };
     CssLoader.prototype.isUseCssLoadPatch = function () {
         var useCssLoadPatch = false;
@@ -193,6 +205,21 @@ var ResourceUrl = (function () {
     return ResourceUrl;
 }());
 
+function polyfill() {
+    if (!Object.assign) {
+        Object.assign = function (src, target) {
+            if (!target) {
+                return src;
+            }
+            Object.keys(target).forEach(function (key) {
+                src[key] = target[key];
+            });
+            return src;
+        };
+    }
+}
+
+polyfill();
 var loaders = {
     js: JsLoader,
     css: CssLoader
@@ -278,6 +305,7 @@ var ResourceLoader = (function () {
             }
             var loader = new loaderFn({
                 url: url,
+                token: _.option.token,
                 timeout: _.option.loaderTimeout
             });
             runtimeCache.loaders.push(loader);
