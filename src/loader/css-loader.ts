@@ -1,13 +1,33 @@
-import { Loader,LoaderOption } from './loader';
+import { Loader,LoaderOption,LoaderState } from './loader';
+import { ResourceUrl } from '../loader/url-parser';
 class CssLoader extends Loader {
-    createDom(){
-        var el = document.createElement('link');
-        el.type = 'text/css';
-        el.rel = 'stylesheet';
-        this.el = el;
+    private getExistElement(url){
+        url = ResourceUrl.parseUrl('',url);
+        var links = Array.prototype.slice.call(document.getElementsByTagName('link'),0);
+        var link = null;
+        links.some(function (lnk) {
+            var href = lnk.href;
+            if(!href){
+                return;
+            }
+            href = href.replace(/\?.*/,'');
+            href = ResourceUrl.parseUrl('',href);
+            if(href === url){
+                link = lnk;
+                return true;
+            }
+        });
+        return link;
     }
-    initResourceUrl() {
-        this.el['href'] = this.tokenUrl();
+    createDom(){
+        this.el = this.getExistElement(this.option.url);
+        if(!this.el){
+            this.el = document.createElement('link');
+            this.el.type = 'text/css';
+            this.el.rel = 'stylesheet';
+            this.el['href'] = this.tokenUrl();
+            this.loadState(LoaderState.Initing)
+        }
     }
     private isUseCssLoadPatch(){
         var useCssLoadPatch = false;

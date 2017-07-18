@@ -17,35 +17,39 @@ function wrpperFn(fn) {
 }
 var LoaderState;
 (function (LoaderState) {
-    LoaderState[LoaderState["Init"] = 'inited'] = "Init";
+    LoaderState[LoaderState["Initing"] = 'initing'] = "Initing";
     LoaderState[LoaderState["Pending"] = 'pending'] = "Pending";
     LoaderState[LoaderState["Finished"] = 'finished'] = "Finished";
     LoaderState[LoaderState["Error"] = 'error'] = "Error";
 })(LoaderState || (LoaderState = {}));
+var nextId = (function () {
+    var id = 1;
+    return function () {
+        return id++;
+    };
+})();
 var Loader = (function () {
     function Loader(option) {
         this.option = {
             url: ''
         };
-        this.status = {
-            state: LoaderState.Init
-        };
+        this.timestamp = nextId();
         this.el = null;
         if (option) {
             Object.assign(this.option, option);
         }
-        this.createDom();
     }
     Loader.prototype.appendToDom = function () {
         document.head.appendChild(this.el);
     };
-    Loader.prototype.removeFromDom = function () {
-        document.head.removeChild(this.el);
-    };
     Loader.prototype.createDom = function () {
     };
-    Loader.prototype.initResourceUrl = function () {
-        this.el['src'] = this.tokenUrl();
+    Loader.prototype.isLoaded = function () {
+        var loadState = this.loadState();
+        if (!loadState) {
+            return true;
+        }
+        return loadState === LoaderState.Finished || loadState === LoaderState.Error;
     };
     Loader.prototype.tokenUrl = function () {
         var url = this.option.url;
@@ -66,13 +70,53 @@ var Loader = (function () {
     };
     Loader.prototype.timeout = function () {
         var el = this.el;
-        if (el.onerror) {
-            el.onerror(this.initTimeoutEvent());
+        if (el.onerror && el.loadCallbacks) {
+            var fnObject = el.loadCallbacks[this.timestamp];
+            fnObject && fnObject.timeout.call(el, this.initTimeoutEvent());
         }
     };
+    Loader.prototype.loadState = function (state) {
+        var el = this.el;
+        if (arguments.length === 0) {
+            return el['state'];
+        }
+        else {
+            el['state'] = state;
+        }
+    };
+    Loader.prototype.invokeCallbacks = function (type, params, context) {
+        var el = this.el;
+        var callbacks = el.loadCallbacks;
+        if (!callbacks) {
+            return;
+        }
+        Object.keys(callbacks).forEach(function (key) {
+            var fnObject = callbacks[key], fn = fnObject[type];
+            if (fn) {
+                try {
+                    fn.apply(context, params);
+                }
+                catch (err) {
+                    console.error(err);
+                }
+            }
+        });
+    };
     Loader.prototype.load = function () {
+        this.createDom();
         var _ = this;
         var el = this.el;
+        if (this.isLoaded()) {
+            return new Promise(function (resolve, reject) {
+                var loadState = _.loadState();
+                if (!loadState || loadState === LoaderState.Finished) {
+                    resolve();
+                }
+                else {
+                    reject();
+                }
+            });
+        }
         var onLoadFn, onErrorFn;
         var promise = new Promise(function (resolve, reject) {
             onLoadFn = wrpperFn(resolve);
@@ -80,28 +124,43 @@ var Loader = (function () {
         });
         var timeout = this.option.timeout;
         var timeoutId;
-        var isTimeout = false;
-        el.onload = el['onreadystatechange'] = function (e) {
-            var stateText = el['readyState'];
-            if (stateText && !/^c|loade/.test(stateText))
-                return;
-            clearTimeout(timeoutId);
-            el.onload = el['onreadystatechange'] = null;
-            _.status.state = LoaderState.Finished;
-            onLoadFn.apply(this, arguments);
+        var loadCallbacks = el.loadCallbacks;
+        var callbackInit = !!loadCallbacks;
+        if (!callbackInit) {
+            loadCallbacks = el.loadCallbacks = {};
+        }
+        var timestamp = this.timestamp;
+        var loadCallback = {
+            load: function (e) {
+                delete loadCallbacks[timestamp];
+                clearTimeout(timeoutId);
+                _.loadState(LoaderState.Finished);
+                onLoadFn.apply(el, arguments);
+            },
+            error: function (e) {
+                delete loadCallbacks[timestamp];
+                clearTimeout(timeoutId);
+                _.loadState(LoaderState.Error);
+                onErrorFn.apply(el, arguments);
+            },
+            timeout: function (e) {
+                onErrorFn.apply(el, arguments);
+            }
         };
-        el.onerror = function () {
-            el.onerror = null;
-            clearTimeout(timeoutId);
-            _.status.state = LoaderState.Error;
-            onErrorFn.apply(this, arguments);
-            _.removeFromDom();
-        };
-        this.initResourceUrl();
+        loadCallbacks[timestamp] = loadCallback;
+        if (!callbackInit) {
+            el.onload = el['onreadystatechange'] = function (e) {
+                var stateText = el['readyState'];
+                if (stateText && !/^c|loade/.test(stateText))
+                    return;
+                _.invokeCallbacks('load', [e], el);
+            };
+            el.onerror = function (e) {
+                _.invokeCallbacks('error', [e], el);
+            };
+        }
         this.appendToDom();
-        _.status.state = LoaderState.Pending;
         timeoutId = timeout && setTimeout(function () {
-            isTimeout = true;
             _.timeout();
         }, timeout);
         return promise;
@@ -109,13 +168,60 @@ var Loader = (function () {
     return Loader;
 }());
 
+var urlDom = document.createElement('a');
+var ResourceUrl = (function () {
+    function ResourceUrl() {
+    }
+    ResourceUrl.parseUrl = function (baseURI, url) {
+        if (!baseURI) {
+            baseURI = '';
+        }
+        if (!url) {
+            url = '';
+        }
+        urlDom.href = url;
+        if (urlDom.href === url || urlDom === url + '/') {
+            return url;
+        }
+        urlDom.href = baseURI;
+        var prefixUrl = urlDom.href;
+        prefixUrl = prefixUrl.replace(/\/+$/, '');
+        url = url.replace(/^ \/+/, '');
+        return prefixUrl + '/' + url;
+    };
+    return ResourceUrl;
+}());
+
 var JsLoader = (function (_super) {
     __extends(JsLoader, _super);
     function JsLoader() {
         _super.apply(this, arguments);
     }
+    JsLoader.prototype.getExistElement = function (url) {
+        url = ResourceUrl.parseUrl('', url);
+        var scripts = Array.prototype.slice.call(document.getElementsByTagName('script'), 0);
+        var script = null;
+        scripts.some(function (scr) {
+            var src = scr.src;
+            if (!src) {
+                return;
+            }
+            src = src.replace(/\?.*/, '');
+            src = ResourceUrl.parseUrl('', src);
+            if (src === url) {
+                script = scr;
+                return true;
+            }
+        });
+        return script;
+    };
     JsLoader.prototype.createDom = function () {
-        this.el = document.createElement('script');
+        this.el = this.getExistElement(this.option.url);
+        if (!this.el) {
+            this.el = document.createElement('script');
+            this.el.src = this.tokenUrl();
+            this.loadState(LoaderState.Initing);
+        }
     };
     return JsLoader;
 }(Loader));
@@ -125,14 +231,33 @@ var CssLoader = (function (_super) {
     function CssLoader() {
         _super.apply(this, arguments);
     }
-    CssLoader.prototype.createDom = function () {
-        var el = document.createElement('link');
-        el.type = 'text/css';
-        el.rel = 'stylesheet';
-        this.el = el;
+    CssLoader.prototype.getExistElement = function (url) {
+        url = ResourceUrl.parseUrl('', url);
+        var links = Array.prototype.slice.call(document.getElementsByTagName('link'), 0);
+        var link = null;
+        links.some(function (lnk) {
+            var href = lnk.href;
+            if (!href) {
+                return;
+            }
+            href = href.replace(/\?.*/, '');
+            href = ResourceUrl.parseUrl('', href);
+            if (href === url) {
+                link = lnk;
+                return true;
+            }
+        });
+        return link;
     };
-    CssLoader.prototype.initResourceUrl = function () {
-        this.el['href'] = this.tokenUrl();
+    CssLoader.prototype.createDom = function () {
+        this.el = this.getExistElement(this.option.url);
+        if (!this.el) {
+            this.el = document.createElement('link');
+            this.el.type = 'text/css';
+            this.el.rel = 'stylesheet';
+            this.el['href'] = this.tokenUrl();
+            this.loadState(LoaderState.Initing);
+        }
     };
     CssLoader.prototype.isUseCssLoadPatch = function () {
         var useCssLoadPatch = false;
@@ -181,30 +306,6 @@ var CssLoader = (function (_super) {
     return CssLoader;
 }(Loader));
 
-var urlDom = document.createElement('a');
-var ResourceUrl = (function () {
-    function ResourceUrl() {
-    }
-    ResourceUrl.parseUrl = function (baseURI, url) {
-        if (!baseURI) {
-            baseURI = '';
-        }
-        if (!url) {
-            url = '';
-        }
-        urlDom.href = url;
-        if (urlDom.href === url || urlDom === url + '/') {
-            return url;
-        }
-        urlDom.href = baseURI;
-        var prefixUrl = urlDom.href;
-        prefixUrl = prefixUrl.replace(/\/+$/, '');
-        url = url.replace(/^ \/+/, '');
-        return prefixUrl + '/' + url;
-    };
-    return ResourceUrl;
-}());
-
 function polyfill() {
     if (!Object.assign) {
         Object.assign = function (src, target) {
@@ -227,7 +328,6 @@ var loaders = {
 loaders = Object.create(loaders);
 var ResourceLoader = (function () {
     function ResourceLoader(option) {
-        this.loadedUrl = {};
         this.option = {};
         if (option) {
             Object.assign(this.option, option);
@@ -243,37 +343,19 @@ var ResourceLoader = (function () {
         evt.initEvent('timeout', false, false);
         return evt;
     };
-    ResourceLoader.prototype.timeout = function (runtimeCache) {
-        runtimeCache.loaders.filter(function (loader) {
-            if (loader.status.state === LoaderState.Finished) {
-                return true;
-            }
-            else {
-                loader.timeout();
-            }
-        });
-    };
     ResourceLoader.prototype.load = function (resource) {
         var _ = this;
-        var runtimeCache = {
-            loaders: []
-        };
         try {
             var timeout = this.option.timeout;
-            var promise = this._load(resource, runtimeCache);
+            var promise = this._load(resource);
             if (!timeout) {
                 return promise;
             }
             var isDirty = false;
             return new Promise(function (resolve, reject) {
                 setTimeout(function () {
-                    try {
-                        isDirty = true;
-                        reject(_.initTimeoutEvent());
-                    }
-                    finally {
-                        _.timeout(runtimeCache);
-                    }
+                    isDirty = true;
+                    reject(_.initTimeoutEvent());
                 }, timeout);
                 promise.then(function (d) {
                     !isDirty && resolve(d);
@@ -285,16 +367,14 @@ var ResourceLoader = (function () {
         finally {
         }
     };
-    ResourceLoader.prototype._load = function (resource, runtimeCache) {
-        var runtimeCache = runtimeCache || {
-            loaders: []
-        };
+    ResourceLoader.prototype._load = function (resource) {
         var _ = this;
         var promise;
         if (resource.dependence) {
-            promise = _._load(resource.dependence, runtimeCache);
+            promise = _._load(resource.dependence);
         }
         function initiateLoader(url) {
+            var _url = _.option.baseURI ? ResourceUrl.parseUrl(_.option.baseURI, url) : url;
             var type = resource.type;
             if (type) {
                 type = type.toLowerCase();
@@ -304,38 +384,31 @@ var ResourceLoader = (function () {
                 throw new Error('resource type is not support !');
             }
             var loader = new loaderFn({
-                url: url,
+                url: _url,
                 token: _.option.token,
                 timeout: _.option.loaderTimeout
             });
-            runtimeCache.loaders.push(loader);
             return loader;
-        }
-        function loadFinishFn(url) {
-            return function () {
-                _.loadedUrl[url] = true;
-            };
         }
         function initPromises() {
             var promises = [];
             if (resource.serial) {
                 resource.urls.forEach(function (url) {
-                    url = _.option.baseURI ? ResourceUrl.parseUrl(_.option.baseURI, url) : url;
                     var loader = initiateLoader(url);
                     if (promises.length > 0) {
                         promises[0] = promises[0].then(function () {
-                            return loader.load(loadFinishFn(url));
+                            return loader.load();
                         });
                     }
                     else {
-                        promises.push(loader.load(loadFinishFn(url)));
+                        promises.push(loader.load());
                     }
                 });
             }
             else {
                 resource.urls.forEach(function (url) {
                     var loader = initiateLoader(url);
-                    promises.push(loader.load(loadFinishFn(url)));
+                    promises.push(loader.load());
                 });
             }
             return promises;

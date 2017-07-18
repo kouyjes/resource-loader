@@ -9,35 +9,39 @@ interface LoaderOption{
     timeout?:number;
 }
 enum LoaderState{
-    Init = 'inited',
+    Initing = 'initing',
     Pending = 'pending',
     Finished = 'finished',
     Error = 'error'
 }
+var nextId = (function () {
+    var id = 1;
+    return function () {
+        return id++;
+    }
+})();
 class Loader {
     option:LoaderOption = {
         url:''
     };
-    status = {
-        state:LoaderState.Init
-    };
+    timestamp:number = nextId();
     el = null;
     constructor(option?:LoaderOption) {
         if(option){
             Object.assign(this.option, option);
         }
-        this.createDom();
     }
     appendToDom() {
         document.head.appendChild(this.el);
     }
-    removeFromDom(){
-        document.head.removeChild(this.el);
-    }
     createDom(){
     }
-    initResourceUrl() {
-        this.el['src'] = this.tokenUrl();
+    isLoaded(){
+        var loadState = this.loadState();
+        if(!loadState){
+            return true;
+        }
+        return loadState === LoaderState.Finished || loadState === LoaderState.Error;
     }
     tokenUrl(){
         var url = this.option.url;
@@ -58,13 +62,51 @@ class Loader {
     }
     timeout(){
         var el = this.el;
-        if(el.onerror){
-            el.onerror(this.initTimeoutEvent());
+        if(el.onerror && el.loadCallbacks){
+            var fnObject = el.loadCallbacks[this.timestamp];
+            fnObject && fnObject.timeout.call(el,this.initTimeoutEvent());
         }
     }
+    loadState(state){
+        var el = this.el;
+        if(arguments.length === 0){
+            return el['state'];
+        }else{
+            el['state'] = state;
+        }
+    }
+    private invokeCallbacks(type,params,context){
+        var el = this.el;
+        var callbacks = el.loadCallbacks;
+        if(!callbacks){
+            return;
+        }
+        Object.keys(callbacks).forEach(function (key) {
+            var fnObject = callbacks[key],
+                fn = fnObject[type];
+            if(fn){
+                try{
+                    fn.apply(context,params);
+                }catch(err){
+                    console.error(err);
+                }
+            }
+        });
+    }
     load() {
+        this.createDom();
         var _ = this;
         var el = this.el;
+        if(this.isLoaded()){
+            return new Promise(function (resolve,reject) {
+                var loadState = _.loadState();
+                if(!loadState || loadState === LoaderState.Finished){
+                    resolve();
+                }else{
+                    reject();
+                }
+            });
+        }
         var onLoadFn, onErrorFn;
         var promise = new Promise(function (resolve, reject) {
             onLoadFn = wrpperFn(resolve);
@@ -72,30 +114,44 @@ class Loader {
         });
         var timeout = this.option.timeout;
         var timeoutId;
-        var isTimeout = false;
-        el.onload = el['onreadystatechange'] = function (e) {
-            var stateText = el['readyState'];
-            if (stateText && !/^c|loade/.test(stateText)) return;
-            clearTimeout(timeoutId);
-            el.onload = el['onreadystatechange'] = null;
-            _.status.state = LoaderState.Finished;
-            onLoadFn.apply(this, arguments);
+        var loadCallbacks = el.loadCallbacks;
+        var callbackInit = !!loadCallbacks;
+        if(!callbackInit){
+            loadCallbacks = el.loadCallbacks = {};
+        }
+        var timestamp = this.timestamp;
+        var loadCallback = {
+            load:function (e) {
+                delete loadCallbacks[timestamp];
+                clearTimeout(timeoutId);
+                _.loadState(LoaderState.Finished);
+                onLoadFn.apply(el, arguments);
+            },
+            error:function (e) {
+                delete loadCallbacks[timestamp];
+                clearTimeout(timeoutId);
+                _.loadState(LoaderState.Error);
+                onErrorFn.apply(el, arguments);
+            },
+            timeout: function (e) {
+                onErrorFn.apply(el, arguments);
+            }
         };
-        el.onerror = function () {
-            el.onerror = null;
-            clearTimeout(timeoutId);
-            _.status.state = LoaderState.Error;
-            onErrorFn.apply(this, arguments);
-            _.removeFromDom();
-        };
-
-        this.initResourceUrl();
+        loadCallbacks[timestamp] = loadCallback;
+        if(!callbackInit){
+            el.onload = el['onreadystatechange'] = function (e) {
+                var stateText = el['readyState'];
+                if (stateText && !/^c|loade/.test(stateText)) return;
+                _.invokeCallbacks('load',[e],el);
+            };
+            el.onerror = function (e) {
+                _.invokeCallbacks('error',[e],el);
+            };
+        }
 
         this.appendToDom();
-        _.status.state = LoaderState.Pending;
 
         timeoutId = timeout && setTimeout(function () {
-            isTimeout = true;
             _.timeout();
         },timeout);
         return promise;

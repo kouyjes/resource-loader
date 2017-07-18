@@ -1,7 +1,7 @@
 import { Loader,LoaderState } from './loader/loader';
 import { JsLoader } from './loader/js-loader';
 import { CssLoader } from './loader/css-loader';
-import { ResourceUrl } from './url-parser';
+import { ResourceUrl } from './loader/url-parser';
 import { polyfill } from './polyfill';
 polyfill();
 interface ResourceLoaderOption {
@@ -27,7 +27,6 @@ class ResourceLoader {
         loaders[type] = loader;
         return ResourceLoader;
     };
-    loadedUrl:Object = {};
     option:ResourceLoaderOption = {
 
     };
@@ -42,35 +41,19 @@ class ResourceLoader {
         evt.initEvent('timeout',false,false);
         return evt;
     }
-    private timeout(runtimeCache){
-        runtimeCache.loaders.filter(function (loader) {
-            if(loader.status.state === LoaderState.Finished){
-                return true;
-            }else{
-                loader.timeout();
-            }
-        });
-    }
     load(resource:Resource){
         var _ = this;
-        var runtimeCache = {
-                loaders:[]
-            };
         try{
             var timeout = this.option.timeout;
-            var promise = this._load(resource,runtimeCache);
+            var promise = this._load(resource);
             if(!timeout){
                 return promise;
             }
             var isDirty = false;
             return new Promise(function (resolve,reject) {
                 setTimeout(function () {
-                    try{
-                        isDirty = true;
-                        reject(_.initTimeoutEvent())
-                    }finally {
-                        _.timeout(runtimeCache);
-                    }
+                    isDirty = true;
+                    reject(_.initTimeoutEvent());
                 },timeout);
                 promise.then(function (d) {
                     !isDirty && resolve(d);
@@ -81,20 +64,18 @@ class ResourceLoader {
         }finally {
         }
     }
-    _load(resource:Resource,runtimeCache?){
+    _load(resource:Resource){
 
-        var runtimeCache = runtimeCache || {
-            loaders:[]
-        };
         var _ = this;
 
         var promise;
 
         if(resource.dependence){
-            promise = _._load(resource.dependence,runtimeCache);
+            promise = _._load(resource.dependence);
         }
 
         function initiateLoader(url){
+            var _url = _.option.baseURI ? ResourceUrl.parseUrl(_.option.baseURI,url) : url;
             var type = resource.type;
             if(type){
                 type = type.toLowerCase();
@@ -104,37 +85,30 @@ class ResourceLoader {
                 throw new Error('resource type is not support !');
             }
             var loader = new loaderFn({
-                url:url,
+                url:_url,
                 token:_.option.token,
                 timeout:_.option.loaderTimeout
             });
-            runtimeCache.loaders.push(loader);
             return loader;
-        }
-        function loadFinishFn(url){
-            return function () {
-                _.loadedUrl[url] = true;
-            }
         }
 
         function initPromises(){
             var promises = [];
             if(resource.serial){
                 resource.urls.forEach(function (url) {
-                    url = _.option.baseURI ? ResourceUrl.parseUrl(_.option.baseURI,url) : url;
                     var loader = initiateLoader(url);
                     if(promises.length > 0){
                         promises[0] = promises[0].then(function () {
-                            return loader.load(loadFinishFn(url));
+                            return loader.load();
                         });
                     }else{
-                        promises.push(loader.load(loadFinishFn(url)));
+                        promises.push(loader.load());
                     }
                 });
             }else{
                 resource.urls.forEach(function (url) {
                     var loader = initiateLoader(url);
-                    promises.push(loader.load(loadFinishFn(url)));
+                    promises.push(loader.load());
                 });
             }
             return promises;

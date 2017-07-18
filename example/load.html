@@ -5,6 +5,7 @@
     <title>Title</title>
     <script src="../dest/resource-loader.js"></script>
     <script src="./promise.js"></script>
+    <!--<script async src="http://localhost:7771/test/test.js"></script>-->
     <script>
         if(!window.Promise){
             window.Promise = HERE.$Promise;
@@ -12,8 +13,8 @@
         var loader = new HERE.ResourceLoader({
             baseURI:'../',
             token:Math.random(),
-            timeout:6000
-            //loaderTimeout:3000
+            timeout:8000
+            //loaderTimeout:1000
         });
         var resource = {
             type:'js',
@@ -26,11 +27,18 @@
             }
         };
         function loadResource(){
-            loader.load(resource).then(function () {
-                console.log('loaded finish ! :' + (new Date).getTime());
-            },function(e){
-                console.log(e);
-            });
+            for(var i = 0;i < 1;i++){
+                (function(){
+                    var index = i;
+                    loader.load(resource).then(function () {
+                        console.log('loaded finish ! :' + index);
+                    },function(e){
+                        console.log(e);
+                    });
+                })();
+
+            }
+
         }
     </script>
 </head>
