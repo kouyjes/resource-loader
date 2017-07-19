@@ -41,7 +41,7 @@ class Loader {
         if(!loadState){
             return true;
         }
-        return loadState === LoaderState.Finished || loadState === LoaderState.Error;
+        return loadState === LoaderState.Finished;
     }
     tokenUrl(){
         var url = this.option.url;
@@ -103,7 +103,7 @@ class Loader {
                 if(!loadState || loadState === LoaderState.Finished){
                     resolve();
                 }else{
-                    reject();
+                    reject('error');
                 }
             });
         }

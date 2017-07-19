@@ -21,6 +21,12 @@ class JsLoader extends Loader {
     }
     createDom(){
         this.el = this.getExistElement(this.option.url);
+        if(this.el && this.el.state === LoaderState.Error){
+            if(this.el.parentNode){
+                this.el.parentNode.removeChild(this.el);
+            }
+            this.el = null;
+        }
         if(!this.el){
             this.el = document.createElement('script');
             this.el.src = this.tokenUrl();

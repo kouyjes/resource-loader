@@ -49,7 +49,7 @@ var Loader = (function () {
         if (!loadState) {
             return true;
         }
-        return loadState === LoaderState.Finished || loadState === LoaderState.Error;
+        return loadState === LoaderState.Finished;
     };
     Loader.prototype.tokenUrl = function () {
         var url = this.option.url;
@@ -113,7 +113,7 @@ var Loader = (function () {
                     resolve();
                 }
                 else {
-                    reject();
+                    reject('error');
                 }
             });
         }
@@ -217,6 +217,12 @@ var JsLoader = (function (_super) {
     };
     JsLoader.prototype.createDom = function () {
         this.el = this.getExistElement(this.option.url);
+        if (this.el && this.el.state === LoaderState.Error) {
+            if (this.el.parentNode) {
+                this.el.parentNode.removeChild(this.el);
+            }
+            this.el = null;
+        }
         if (!this.el) {
             this.el = document.createElement('script');
             this.el.src = this.tokenUrl();
@@ -251,6 +257,12 @@ var CssLoader = (function (_super) {
     };
     CssLoader.prototype.createDom = function () {
         this.el = this.getExistElement(this.option.url);
+        if (this.el && this.el.state === LoaderState.Error) {
+            if (this.el.parentNode) {
+                this.el.parentNode.removeChild(this.el);
+            }
+            this.el = null;
+        }
         if (!this.el) {
             this.el = document.createElement('link');
             this.el.type = 'text/css';
