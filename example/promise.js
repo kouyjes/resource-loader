@@ -9,7 +9,7 @@
  */
 function Promise(){
     this.state = {
-        code:0, //1:success 2:error
+        code:0, //1:success 2:error 3 finished
         data:undefined
     };
     this.success = null;
@@ -35,39 +35,44 @@ function isPromise(p){
 }
 Promise.prototype.execute = function () {
 
+    if(this.state.code === 3){
+        return;
+    }
     var executeType = this.state.code === 1 ? 'success' : 'error';
+    this.state.code = 3;
     var result = this.state.data;
     var promise = this;
     var executeResult = null;
+    var deferred = promise.deferred;
     try{
         executeResult = promise[executeType] && promise[executeType](result) || result;
     }catch(e){
-        if(promise.deferred && promise.deferred.promise.deferred){
-            promise.deferred.promise.deferred.reject(e);
+        if(deferred && deferred.promise.deferred){
+            deferred.promise.deferred.reject(e);
         }
         return;
     }
     if(isPromise(executeResult)){
         executeResult.then(function (r) {
-            if(promise.deferred){
-                promise.deferred.resolve(r);
+            if(deferred){
+                deferred.resolve(r);
             }
         }, function (e) {
-            if(promise.deferred){
-                promise.deferred.reject(e);
+            if(deferred){
+                deferred.reject(e);
             }
         });
         return;
     }
 
-    if(promise.deferred){
+    if(deferred){
         if(this.state.code === 1){
-            promise.deferred.resolve(executeResult);
+            deferred.resolve(executeResult);
         }else {
             if(promise[executeType]){
-                promise.deferred.resolve(executeResult);
+                deferred.resolve(executeResult);
             }else{
-                promise.deferred.reject(executeResult);
+                deferred.reject(executeResult);
             }
         }
 
@@ -79,6 +84,9 @@ function Deferred(){
 Deferred.prototype.resolve = function (result) {
 
     var promise = this.promise;
+    if(promise.state.code === 3){
+        return;
+    }
     promise.state.code = 1;
     promise.state.data = result;
     if(!promise.deferred){
@@ -89,6 +97,9 @@ Deferred.prototype.resolve = function (result) {
 Deferred.prototype.reject = function (result) {
 
     var promise = this.promise;
+    if(promise.state.code === 3){
+        return;
+    }
     promise.state.code = 2;
     promise.state.data = result;
     if(!promise.deferred){
@@ -125,11 +136,11 @@ $Promise.all = function (promises) {
             promiseCount--;
             promiseDatas[index] = data;
             if(promiseCount === 0){
-                deferred.resolve(promiseDatas);
+                return deferred.resolve(promiseDatas);
             }
-        }, function () {
-            deferred.reject();
+        }, function (e) {
             promiseCount = -1;
+            return deferred.reject(e);
         });
     });
     return deferred.promise;

@@ -355,13 +355,15 @@ var ResourceLoader = (function () {
         }
         return new Promise(function (resolve, reject) {
             var isDirty = false;
-            setTimeout(function () {
+            var timeoutId = setTimeout(function () {
                 isDirty = true;
                 reject(_.initTimeoutEvent());
             }, timeout);
             promise.then(function (d) {
+                clearTimeout(timeoutId);
                 !isDirty && resolve(d);
             }, function (d) {
+                clearTimeout(timeoutId);
                 !isDirty && reject(d);
             });
         });
