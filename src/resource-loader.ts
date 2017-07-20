@@ -43,26 +43,23 @@ class ResourceLoader {
     }
     load(resource:Resource){
         var _ = this;
-        try{
-            var timeout = this.option.timeout;
-            var promise = this._load(resource);
-            if(!timeout){
-                return promise;
-            }
-            var isDirty = false;
-            return new Promise(function (resolve,reject) {
-                setTimeout(function () {
-                    isDirty = true;
-                    reject(_.initTimeoutEvent());
-                },timeout);
-                promise.then(function (d) {
-                    !isDirty && resolve(d);
-                }, function (d) {
-                    !isDirty && reject(d);
-                });
-            });
-        }finally {
+        var timeout = this.option.timeout;
+        var promise = this._load(resource);
+        if(!timeout){
+            return promise;
         }
+        return new Promise(function (resolve,reject) {
+            var isDirty = false;
+            setTimeout(function () {
+                isDirty = true;
+                reject(_.initTimeoutEvent());
+            },timeout);
+            promise.then(function (d) {
+                !isDirty && resolve(d);
+            }, function (d) {
+                !isDirty && reject(d);
+            });
+        });
     }
     _load(resource:Resource){
 
