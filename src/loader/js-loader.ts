@@ -23,7 +23,7 @@ class JsLoader extends Loader {
         this.el = this.getExistElement(this.option.url);
         if(!this.el){
             this.el = document.createElement('script');
-            this.el.src = this.tokenUrl();
+            this.el.src = this.finalURL();
             this.loadState(LoaderState.Init);
         }
     }

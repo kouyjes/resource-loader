@@ -44,7 +44,7 @@ abstract class Loader {
         }
         return loadState === LoaderState.Finished;
     }
-    protected tokenUrl(){
+    protected finalURL(){
         var url = this.option.url;
         var params = this.option.params;
         if(!params){
@@ -54,9 +54,12 @@ abstract class Loader {
         Object.keys(params).forEach(function (name) {
             var value = params[name];
             if(value){
-                queryArray.push('name=' + value);
+                queryArray.push(name + '=' + value);
             }
         });
+        if(queryArray.length === 0){
+            return url;
+        }
         var queryString = queryArray.join('&');
         if(this.option.url.indexOf('?') === -1){
             queryString = '?' + queryString;

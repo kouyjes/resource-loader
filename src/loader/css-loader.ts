@@ -25,7 +25,7 @@ class CssLoader extends Loader {
             this.el = document.createElement('link');
             this.el.type = 'text/css';
             this.el.rel = 'stylesheet';
-            this.el['href'] = this.tokenUrl();
+            this.el['href'] = this.finalURL();
             this.loadState(LoaderState.Init)
         }
     }

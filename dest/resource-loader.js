@@ -53,7 +53,7 @@ var Loader = (function () {
         }
         return loadState === LoaderState.Finished;
     };
-    Loader.prototype.tokenUrl = function () {
+    Loader.prototype.finalURL = function () {
         var url = this.option.url;
         var params = this.option.params;
         if (!params) {
@@ -63,9 +63,12 @@ var Loader = (function () {
         Object.keys(params).forEach(function (name) {
             var value = params[name];
             if (value) {
-                queryArray.push('name=' + value);
+                queryArray.push(name + '=' + value);
             }
         });
+        if (queryArray.length === 0) {
+            return url;
+        }
         var queryString = queryArray.join('&');
         if (this.option.url.indexOf('?') === -1) {
             queryString = '?' + queryString;
@@ -236,7 +239,7 @@ var JsLoader = (function (_super) {
         this.el = this.getExistElement(this.option.url);
         if (!this.el) {
             this.el = document.createElement('script');
-            this.el.src = this.tokenUrl();
+            this.el.src = this.finalURL();
             this.loadState(LoaderState.Init);
         }
     };
@@ -272,7 +275,7 @@ var CssLoader = (function (_super) {
             this.el = document.createElement('link');
             this.el.type = 'text/css';
             this.el.rel = 'stylesheet';
-            this.el['href'] = this.tokenUrl();
+            this.el['href'] = this.finalURL();
             this.loadState(LoaderState.Init);
         }
     };
@@ -400,7 +403,7 @@ var ResourceLoader = (function () {
             }
             var loader = new loaderFn({
                 url: _url,
-                token: _this.option.params,
+                params: _this.option.params,
                 timeout: _this.option.loaderTimeout
             });
             return loader;

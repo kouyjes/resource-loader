@@ -82,7 +82,7 @@ class ResourceLoader {
             }
             var loader = new loaderFn({
                 url:_url,
-                token:this.option.params,
+                params:this.option.params,
                 timeout:this.option.loaderTimeout
             });
             return loader;
