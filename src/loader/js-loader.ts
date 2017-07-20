@@ -19,12 +19,12 @@ class JsLoader extends Loader {
         });
         return script;
     }
-    createDom(){
+    protected createDom(){
         this.el = this.getExistElement(this.option.url);
         if(!this.el){
             this.el = document.createElement('script');
             this.el.src = this.tokenUrl();
-            this.loadState(LoaderState.Initing)
+            this.loadState(LoaderState.Init);
         }
     }
 }

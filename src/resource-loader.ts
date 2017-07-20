@@ -6,7 +6,7 @@ import { polyfill } from './polyfill';
 polyfill();
 interface ResourceLoaderOption {
     baseURI?:String;
-    token?:String|number
+    params?:Object
     useCache?:Boolean;
     loaderTimeout?:number;
     timeout?:number;
@@ -42,17 +42,16 @@ class ResourceLoader {
         return evt;
     }
     load(resource:Resource){
-        var _ = this;
         var timeout = this.option.timeout;
         var promise = this._load(resource);
         if(!timeout){
             return promise;
         }
-        return new Promise(function (resolve,reject) {
+        return new Promise((resolve,reject) => {
             var isDirty = false;
             var timeoutId = setTimeout(function () {
                 isDirty = true;
-                reject(_.initTimeoutEvent());
+                reject(this.initTimeoutEvent());
             },timeout);
             promise.then(function (d) {
                 clearTimeout(timeoutId);
@@ -65,16 +64,14 @@ class ResourceLoader {
     }
     _load(resource:Resource){
 
-        var _ = this;
-
         var promise;
 
         if(resource.dependence){
-            promise = _._load(resource.dependence);
+            promise = this._load(resource.dependence);
         }
 
-        function initiateLoader(url){
-            var _url = _.option.baseURI ? ResourceUrl.parseUrl(_.option.baseURI,url) : url;
+        var initiateLoader = (url) => {
+            var _url = this.option.baseURI ? ResourceUrl.parseUrl(this.option.baseURI,url) : url;
             var type = resource.type;
             if(type){
                 type = type.toLowerCase();
@@ -85,8 +82,8 @@ class ResourceLoader {
             }
             var loader = new loaderFn({
                 url:_url,
-                token:_.option.token,
-                timeout:_.option.loaderTimeout
+                token:this.option.params,
+                timeout:this.option.loaderTimeout
             });
             return loader;
         }

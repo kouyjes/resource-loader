@@ -19,14 +19,14 @@ class CssLoader extends Loader {
         });
         return link;
     }
-    createDom(){
+    protected createDom(){
         this.el = this.getExistElement(this.option.url);
         if(!this.el){
             this.el = document.createElement('link');
             this.el.type = 'text/css';
             this.el.rel = 'stylesheet';
             this.el['href'] = this.tokenUrl();
-            this.loadState(LoaderState.Initing)
+            this.loadState(LoaderState.Init)
         }
     }
     private isUseCssLoadPatch(){
@@ -47,14 +47,13 @@ class CssLoader extends Loader {
         return useCssLoadPatch;
     }
     private checkUseCssLoadPatch(){
-        var _ = this;
         var el = this.el;
         var startTime = (new Date()).getTime();
-        var timeout = _.option.timeout;
+        var timeout = this.option.timeout;
         if(this.isUseCssLoadPatch()){
-            setTimeout(function checkLoad() {
+            var checkLoad = () => {
                 if(timeout && (new Date()).getTime() - startTime > timeout){
-                    el.onerror(_.initTimeoutEvent());
+                    el.onerror(this.initTimeoutEvent());
                     return;
                 }
                 if(el.sheet && el.sheet.cssRules){
@@ -63,7 +62,8 @@ class CssLoader extends Loader {
                     checkLoad();
                 }
 
-            },20);
+            };
+            setTimeout(checkLoad ,20);
         }
     }
     load(){

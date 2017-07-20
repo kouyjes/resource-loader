@@ -1,3 +1,4 @@
+/// <reference path="../types/type.d.ts" />
 function wrpperFn(fn) {
     return function () {
         fn.apply(this, arguments);
@@ -5,11 +6,11 @@ function wrpperFn(fn) {
 }
 interface LoaderOption{
     url:String;
-    token?:String|number;
+    params?:Object;
     timeout?:number;
 }
 enum LoaderState{
-    Initing = 'initing',
+    Init = 'init',
     Pending = 'pending',
     Finished = 'finished',
     Error = 'error'
@@ -20,42 +21,50 @@ var nextId = (function () {
         return id++;
     }
 })();
-class Loader {
-    option:LoaderOption = {
+abstract class Loader {
+    protected option:LoaderOption = {
         url:''
     };
-    timestamp:number = nextId();
-    el = null;
+    protected timestamp:number = nextId();
+    protected el:HTMLElement = null;
     constructor(option?:LoaderOption) {
         if(option){
             Object.assign(this.option, option);
         }
     }
-    appendToDom() {
+    protected appendToDom() {
         document.head.appendChild(this.el);
     }
-    createDom(){
+    protected createDom(){
     }
-    isLoaded(){
+    protected isLoaded(){
         var loadState = this.loadState();
         if(!loadState){
             return true;
         }
         return loadState === LoaderState.Finished;
     }
-    tokenUrl(){
+    protected tokenUrl(){
         var url = this.option.url;
-        if(!this.option.token){
+        var params = this.option.params;
+        if(!params){
             return url;
         }
-        var token = 'token=' + this.option.token;
+        var queryArray= Array<String>();
+        Object.keys(params).forEach(function (name) {
+            var value = params[name];
+            if(value){
+                queryArray.push('name=' + value);
+            }
+        });
+        var queryString = queryArray.join('&');
         if(this.option.url.indexOf('?') === -1){
-            token = '?' + token;
+            queryString = '?' + queryString;
         }
-        url = url + token;
+        url = url + queryString;
         return url;
     }
-    initTimeoutEvent(){
+    protected initTimeoutEvent(){
         var evt = document.createEvent('CustomEvent');
         evt.initEvent('timeout',false,false);
         return evt;
@@ -95,11 +104,11 @@ class Loader {
     }
     load() {
         this.createDom();
-        var _ = this;
         var el = this.el;
         if(this.isLoaded()){
-            return new Promise(function (resolve,reject) {
-                var loadState = _.loadState();
+
+            return new Promise((resolve,reject) => {
+                var loadState = this.loadState();
                 if(!loadState || loadState === LoaderState.Finished){
                     resolve();
                 }else{
@@ -108,7 +117,7 @@ class Loader {
             });
         }
         var onLoadFn, onErrorFn;
-        var promise = new Promise(function (resolve, reject) {
+        var promise = new Promise((resolve, reject) => {
             onLoadFn = wrpperFn(resolve);
             onErrorFn = wrpperFn(reject);
         });
@@ -121,44 +130,44 @@ class Loader {
         }
         var timestamp = this.timestamp;
         var loadCallback = {
-            load:function (e) {
+            load:(e) => {
                 delete loadCallbacks[timestamp];
                 clearTimeout(timeoutId);
-                _.loadState(LoaderState.Finished);
+                this.loadState(LoaderState.Finished);
                 onLoadFn.apply(el, arguments);
             },
-            error:function (e) {
+            error:(e) => {
                 delete loadCallbacks[timestamp];
                 clearTimeout(timeoutId);
-                _.loadState(LoaderState.Error);
+                this.loadState(LoaderState.Error);
                 onErrorFn.apply(el, arguments);
             },
-            timeout: function (e) {
+            timeout:(e) => {
                 onErrorFn.apply(el, arguments);
             }
         };
         loadCallbacks[timestamp] = loadCallback;
         if(!callbackInit){
-            el.onload = el['onreadystatechange'] = function (e) {
+            el.onload = el['onreadystatechange'] = (e) => {
                 var stateText = el['readyState'];
                 if (stateText && !/^c|loade/.test(stateText)) return;
-                _.invokeCallbacks('load',[e],el);
+                this.invokeCallbacks('load',[e],el);
             };
-            el.onerror = function (e) {
-                var comment = document.createComment('Loader load error, Url: ' + _.option.url + ' ,loadTime:' + (new Date()));
+            el.onerror = (e) => {
+                var comment = document.createComment('Loader load error, Url: ' + this.option.url + ' ,loadTime:' + (new Date()));
                 if(el.parentNode){
                     el.parentNode.replaceChild(comment,el);
                 }else{
                     document.head.appendChild(comment);
                 }
-                _.invokeCallbacks('error',[e],el);
+                this.invokeCallbacks('error',[e],el);
             };
         }
 
         this.appendToDom();
 
-        timeoutId = timeout && setTimeout(function () {
-            _.timeout();
+        timeoutId = timeout && setTimeout(() => {
+            this.timeout();
         },timeout);
         return promise;
     }

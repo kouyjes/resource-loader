@@ -1,3 +1,4 @@
+/* Resource loader */
 (function (global, factory) {
     typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
     typeof define === 'function' && define.amd ? define(['exports'], factory) :
@@ -10,6 +11,7 @@ function __extends(d, b) {
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 }
 
+/// <reference path="../types/type.d.ts" />
 function wrpperFn(fn) {
     return function () {
         fn.apply(this, arguments);
@@ -17,7 +19,7 @@ function wrpperFn(fn) {
 }
 var LoaderState;
 (function (LoaderState) {
-    LoaderState[LoaderState["Initing"] = 'initing'] = "Initing";
+    LoaderState[LoaderState["Init"] = 'init'] = "Init";
     LoaderState[LoaderState["Pending"] = 'pending'] = "Pending";
     LoaderState[LoaderState["Finished"] = 'finished'] = "Finished";
     LoaderState[LoaderState["Error"] = 'error'] = "Error";
@@ -53,14 +55,22 @@ var Loader = (function () {
     };
     Loader.prototype.tokenUrl = function () {
         var url = this.option.url;
-        if (!this.option.token) {
+        var params = this.option.params;
+        if (!params) {
             return url;
         }
-        var token = 'token=' + this.option.token;
+        var queryArray = Array();
+        Object.keys(params).forEach(function (name) {
+            var value = params[name];
+            if (value) {
+                queryArray.push('name=' + value);
+            }
+        });
+        var queryString = queryArray.join('&');
         if (this.option.url.indexOf('?') === -1) {
-            token = '?' + token;
+            queryString = '?' + queryString;
         }
-        url = url + token;
+        url = url + queryString;
         return url;
     };
     Loader.prototype.initTimeoutEvent = function () {
@@ -103,12 +113,12 @@ var Loader = (function () {
         });
     };
     Loader.prototype.load = function () {
+        var _this = this;
         this.createDom();
-        var _ = this;
         var el = this.el;
         if (this.isLoaded()) {
             return new Promise(function (resolve, reject) {
-                var loadState = _.loadState();
+                var loadState = _this.loadState();
                 if (!loadState || loadState === LoaderState.Finished) {
                     resolve();
                 }
@@ -134,13 +144,13 @@ var Loader = (function () {
             load: function (e) {
                 delete loadCallbacks[timestamp];
                 clearTimeout(timeoutId);
-                _.loadState(LoaderState.Finished);
+                _this.loadState(LoaderState.Finished);
                 onLoadFn.apply(el, arguments);
             },
             error: function (e) {
                 delete loadCallbacks[timestamp];
                 clearTimeout(timeoutId);
-                _.loadState(LoaderState.Error);
+                _this.loadState(LoaderState.Error);
                 onErrorFn.apply(el, arguments);
             },
             timeout: function (e) {
@@ -153,22 +163,22 @@ var Loader = (function () {
                 var stateText = el['readyState'];
                 if (stateText && !/^c|loade/.test(stateText))
                     return;
-                _.invokeCallbacks('load', [e], el);
+                _this.invokeCallbacks('load', [e], el);
             };
             el.onerror = function (e) {
-                var comment = document.createComment('Loader load error, Url: ' + _.option.url + ' ,loadTime:' + (new Date()));
+                var comment = document.createComment('Loader load error, Url: ' + _this.option.url + ' ,loadTime:' + (new Date()));
                 if (el.parentNode) {
                     el.parentNode.replaceChild(comment, el);
                 }
                 else {
                     document.head.appendChild(comment);
                 }
-                _.invokeCallbacks('error', [e], el);
+                _this.invokeCallbacks('error', [e], el);
             };
         }
         this.appendToDom();
         timeoutId = timeout && setTimeout(function () {
-            _.timeout();
+            _this.timeout();
         }, timeout);
         return promise;
     };
@@ -227,7 +237,7 @@ var JsLoader = (function (_super) {
         if (!this.el) {
             this.el = document.createElement('script');
             this.el.src = this.tokenUrl();
-            this.loadState(LoaderState.Initing);
+            this.loadState(LoaderState.Init);
         }
     };
     return JsLoader;
@@ -263,7 +273,7 @@ var CssLoader = (function (_super) {
             this.el.type = 'text/css';
             this.el.rel = 'stylesheet';
             this.el['href'] = this.tokenUrl();
-            this.loadState(LoaderState.Initing);
+            this.loadState(LoaderState.Init);
         }
     };
     CssLoader.prototype.isUseCssLoadPatch = function () {
@@ -286,14 +296,14 @@ var CssLoader = (function (_super) {
         return useCssLoadPatch;
     };
     CssLoader.prototype.checkUseCssLoadPatch = function () {
-        var _ = this;
+        var _this = this;
         var el = this.el;
         var startTime = (new Date()).getTime();
-        var timeout = _.option.timeout;
+        var timeout = this.option.timeout;
         if (this.isUseCssLoadPatch()) {
-            setTimeout(function checkLoad() {
+            var checkLoad = function () {
                 if (timeout && (new Date()).getTime() - startTime > timeout) {
-                    el.onerror(_.initTimeoutEvent());
+                    el.onerror(_this.initTimeoutEvent());
                     return;
                 }
                 if (el.sheet && el.sheet.cssRules) {
@@ -302,7 +312,8 @@ var CssLoader = (function (_super) {
                 else {
                     checkLoad();
                 }
-            }, 20);
+            };
+            setTimeout(checkLoad, 20);
         }
     };
     CssLoader.prototype.load = function () {
@@ -351,7 +362,6 @@ var ResourceLoader = (function () {
         return evt;
     };
     ResourceLoader.prototype.load = function (resource) {
-        var _ = this;
         var timeout = this.option.timeout;
         var promise = this._load(resource);
         if (!timeout) {
@@ -361,7 +371,7 @@ var ResourceLoader = (function () {
             var isDirty = false;
             var timeoutId = setTimeout(function () {
                 isDirty = true;
-                reject(_.initTimeoutEvent());
+                reject(this.initTimeoutEvent());
             }, timeout);
             promise.then(function (d) {
                 clearTimeout(timeoutId);
@@ -373,13 +383,13 @@ var ResourceLoader = (function () {
         });
     };
     ResourceLoader.prototype._load = function (resource) {
-        var _ = this;
+        var _this = this;
         var promise;
         if (resource.dependence) {
-            promise = _._load(resource.dependence);
+            promise = this._load(resource.dependence);
         }
-        function initiateLoader(url) {
-            var _url = _.option.baseURI ? ResourceUrl.parseUrl(_.option.baseURI, url) : url;
+        var initiateLoader = function (url) {
+            var _url = _this.option.baseURI ? ResourceUrl.parseUrl(_this.option.baseURI, url) : url;
             var type = resource.type;
             if (type) {
                 type = type.toLowerCase();
@@ -390,11 +400,11 @@ var ResourceLoader = (function () {
             }
             var loader = new loaderFn({
                 url: _url,
-                token: _.option.token,
-                timeout: _.option.loaderTimeout
+                token: _this.option.params,
+                timeout: _this.option.loaderTimeout
             });
             return loader;
-        }
+        };
         function initPromises() {
             var promises = [];
             if (resource.serial) {
