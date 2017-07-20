@@ -145,6 +145,9 @@ class Loader {
                 _.invokeCallbacks('load',[e],el);
             };
             el.onerror = function (e) {
+                if(el.parentNode){
+                    el.parentNode.removeChild(el);
+                }
                 _.invokeCallbacks('error',[e],el);
             };
         }
