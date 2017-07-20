@@ -156,8 +156,12 @@ var Loader = (function () {
                 _.invokeCallbacks('load', [e], el);
             };
             el.onerror = function (e) {
+                var comment = document.createComment('Loader load error, Url: ' + _.option.url + ' ,loadTime:' + (new Date()));
                 if (el.parentNode) {
-                    el.parentNode.removeChild(el);
+                    el.parentNode.replaceChild(comment, el);
+                }
+                else {
+                    document.head.appendChild(comment);
                 }
                 _.invokeCallbacks('error', [e], el);
             };
