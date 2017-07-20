@@ -49,7 +49,7 @@
     interface ResourceLoaderOption {
         baseURI?:String; // Define load baseURI
         useCache?:Boolean; // if use Cache
-        token?:String|number; url token
+        params?:Object // url query params
         loaderTimeout?:number; // timeout of ervery item
         timeout?:number; //timeout of all loaders
     }
