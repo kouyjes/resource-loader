@@ -3,10 +3,11 @@
 1.Resource declaration
 ```javascript
     interface Resource {
-        type:String;
-        urls:String[]; // js || css
-        serial?:Boolean;
-        dependence?:Resource;
+        type:String; // type name js|css
+        urls:String[]; 
+        serial?:Boolean; // if serial load urls
+        dependence?:Resource; // will be load before load urls
+        timeout?:number // timeout of every url item load  | ms
     }
 ```
 2.parallel load resource urls 
@@ -40,6 +41,7 @@
 ```javascript
     var resource = {
         type:'css',
+        timeout:2000,
         urls:['test/a.css']
     };
 ```
@@ -50,13 +52,11 @@
         baseURI?:String; // Define load baseURI
         useCache?:Boolean; // if use Cache
         params?:Object // url query params
-        loaderTimeout?:number; // timeout of ervery item
         timeout?:number; //timeout of all loaders
     }
     var loader = new HERE.ResourceLoader({
         baseURI:'../',
-        timeout:8000
-        loaderTimeout:2000
+        timeout:8000 // timeout of all request
    });
 ```
 2.Start load Resource
@@ -67,6 +67,16 @@
     },function(){
         console.log('load error or timeout !');
     });
+    
+    //other resource,will load resourceCss after resourceJs has been loaded
+    var resourceJs,resourceCss;
+    loader.load(resourceJs,resourceCss);
+    // parallel load resource,you can
+    loader.load([resourceJs,resourceCss]);
+    // mixed serial load and parallel load,
+    //load resourceC after resourceJs and resourceCss has been loaded,resourceJs and resourceCss load parallel
+    var resourceC;
+    loader.load([resourceJs,resourceCss],resourceC);
 ```
 3.Extend loader for ResourceLoader
 ```javascript

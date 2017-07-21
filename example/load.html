@@ -17,23 +17,29 @@
                 token:Math.random(),
                 userId:'login_' + Math.random()
             }
-            //loaderTimeout:1000
         });
-        var resource = {
+        var jsResource = {
             type:'js',
             serial:true,
-            urls:['test/js/a.js','http://localhost:7771/test/test.js'/*,'test/js/b.js'*/],
+            //timeout:1000,
+            urls:['test/js/a.js','http://localhost:7771/test/test.js','test/js/b.js'],
             dependence:{
-                type:'css',
+                type:'js',
                 serial:true,
-                urls:['http://localhost:7771/test/test.css','http://localhost:7771/test/test1.css']
+                urls:['test/js/base.js']
             }
+        };
+        var cssResource = {
+            type:'css',
+            serial:true,
+            //timeout:1000,
+            urls:['http://localhost:7771/test/test.css','http://localhost:7771/test/test1.css']
         };
         function loadResource(){
             for(var i = 0;i < 1;i++){
                 (function(){
                     var index = i;
-                    loader.load(resource).then(function () {
+                    loader.load([cssResource,jsResource]).then(function () {
                         console.log('loaded finish ! :' + index);
                     },function(e){
                         console.log(e);

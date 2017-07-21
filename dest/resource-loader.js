@@ -365,6 +365,29 @@ var ResourceLoader = (function () {
         return evt;
     };
     ResourceLoader.prototype.load = function (resource) {
+        var _this = this;
+        var other = [];
+        for (var _i = 1; _i < arguments.length; _i++) {
+            other[_i - 1] = arguments[_i];
+        }
+        var promises = [];
+        if (!(resource instanceof Array)) {
+            promises.push(this._loadResource(resource));
+        }
+        else {
+            resource.forEach(function (resource) {
+                promises.push(_this._loadResource(resource));
+            });
+        }
+        var promise = Promise.all(promises);
+        other.forEach(function (resource) {
+            promise = promise.then(function () {
+                return _this.load(resource);
+            });
+        });
+        return promise;
+    };
+    ResourceLoader.prototype._loadResource = function (resource) {
         var timeout = this.option.timeout;
         var promise = this._load(resource);
         if (!timeout) {
@@ -404,7 +427,7 @@ var ResourceLoader = (function () {
             var loader = new loaderFn({
                 url: _url,
                 params: _this.option.params,
-                timeout: _this.option.loaderTimeout
+                timeout: resource.timeout
             });
             return loader;
         };

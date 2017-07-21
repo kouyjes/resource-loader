@@ -8,7 +8,6 @@ interface ResourceLoaderOption {
     baseURI?:String;
     params?:Object
     useCache?:Boolean;
-    loaderTimeout?:number;
     timeout?:number;
 }
 interface Resource {
@@ -16,6 +15,7 @@ interface Resource {
     urls:String[];
     serial?:Boolean;
     dependence?:Resource;
+    timeout?:number;
 }
 var loaders = {
     js:JsLoader,
@@ -27,7 +27,7 @@ class ResourceLoader {
         loaders[type] = loader;
         return ResourceLoader;
     };
-    option:ResourceLoaderOption = {
+    private option:ResourceLoaderOption = {
 
     };
 
@@ -41,7 +41,25 @@ class ResourceLoader {
         evt.initEvent('timeout',false,false);
         return evt;
     }
-    load(resource:Resource){
+    load(resource:Resource|Resource[],...other:Resource[]){
+
+        var promises = [];
+        if(!(resource instanceof Array)){
+            promises.push(this._loadResource(<Resource>resource));
+        }else{
+            (<Resource[]>resource).forEach((resource) => {
+                promises.push(this._loadResource(resource));
+            });
+        }
+        var promise = Promise.all(promises);
+        other.forEach((resource) => {
+            promise = promise.then(() => {
+                return this.load(resource);
+            });
+        });
+        return promise;
+    }
+    private _loadResource(resource:Resource){
         var timeout = this.option.timeout;
         var promise = this._load(resource);
         if(!timeout){
@@ -62,7 +80,7 @@ class ResourceLoader {
             });
         });
     }
-    _load(resource:Resource){
+    private _load(resource:Resource){
 
         var promise;
 
@@ -83,7 +101,7 @@ class ResourceLoader {
             var loader = new loaderFn({
                 url:_url,
                 params:this.option.params,
-                timeout:this.option.loaderTimeout
+                timeout:resource.timeout
             });
             return loader;
         }

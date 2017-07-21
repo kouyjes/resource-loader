@@ -1,0 +1,1 @@
+console.log('base.js loaded at time: ' + (new Date()).getTime());
