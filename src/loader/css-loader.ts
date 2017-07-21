@@ -56,14 +56,14 @@ class CssLoader extends Loader {
                     el.onerror(this.initTimeoutEvent());
                     return;
                 }
-                if(el.sheet && el.sheet.cssRules){
+                if(el.sheet){
                     el.onload();
                 }else{
-                    checkLoad();
+                    setTimeout(checkLoad ,20);
                 }
 
             };
-            setTimeout(checkLoad ,20);
+            checkLoad();
         }
     }
     load(){

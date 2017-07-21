@@ -309,14 +309,14 @@ var CssLoader = (function (_super) {
                     el.onerror(_this.initTimeoutEvent());
                     return;
                 }
-                if (el.sheet && el.sheet.cssRules) {
+                if (el.sheet) {
                     el.onload();
                 }
                 else {
-                    checkLoad();
+                    setTimeout(checkLoad, 20);
                 }
             };
-            setTimeout(checkLoad, 20);
+            checkLoad();
         }
     };
     CssLoader.prototype.load = function () {
