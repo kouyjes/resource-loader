@@ -66,7 +66,7 @@ class CssLoader extends Loader {
             checkLoad();
         }
     }
-    load(){
+    load():Promise{
         var result = super.load();
         this.checkUseCssLoadPatch();
         return result;

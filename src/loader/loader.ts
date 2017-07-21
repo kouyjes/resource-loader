@@ -1,14 +1,23 @@
 /// <reference path="../types/type.d.ts" />
-function wrpperFn(fn) {
+function wrapperFn(fn) {
     return function () {
         fn.apply(this, arguments);
     }
 }
+/**
+ * loader config option
+ * url: resource url
+ * params: url query params eg:{code:123}
+ * timeout: load timeout in ms
+ */
 interface LoaderOption{
     url:String;
     params?:Object;
     timeout?:number;
 }
+/**
+ * load state
+ */
 enum LoaderState{
     Init = 'init',
     Pending = 'pending',
@@ -21,6 +30,9 @@ var nextId = (function () {
         return id++;
     }
 })();
+/**
+ * base abstract class loader
+ */
 abstract class Loader {
     protected option:LoaderOption = {
         url:''
@@ -105,7 +117,12 @@ abstract class Loader {
             }
         });
     }
-    load() {
+
+    /**
+     * start load
+     * @returns {Promise<T>}
+     */
+    load():Promise {
         this.createDom();
         var el = this.el;
         if(this.isLoaded()){
@@ -121,8 +138,8 @@ abstract class Loader {
         }
         var onLoadFn, onErrorFn;
         var promise = new Promise((resolve, reject) => {
-            onLoadFn = wrpperFn(resolve);
-            onErrorFn = wrpperFn(reject);
+            onLoadFn = wrapperFn(resolve);
+            onErrorFn = wrapperFn(reject);
         });
         var timeout = this.option.timeout;
         var timeoutId;

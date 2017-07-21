@@ -12,11 +12,14 @@ function __extends(d, b) {
 }
 
 /// <reference path="../types/type.d.ts" />
-function wrpperFn(fn) {
+function wrapperFn(fn) {
     return function () {
         fn.apply(this, arguments);
     };
 }
+/**
+ * load state
+ */
 var LoaderState;
 (function (LoaderState) {
     LoaderState[LoaderState["Init"] = 'init'] = "Init";
@@ -30,6 +33,9 @@ var nextId = (function () {
         return id++;
     };
 })();
+/**
+ * base abstract class loader
+ */
 var Loader = (function () {
     function Loader(option) {
         this.option = {
@@ -115,6 +121,10 @@ var Loader = (function () {
             }
         });
     };
+    /**
+     * start load
+     * @returns {Promise<T>}
+     */
     Loader.prototype.load = function () {
         var _this = this;
         this.createDom();
@@ -132,8 +142,8 @@ var Loader = (function () {
         }
         var onLoadFn, onErrorFn;
         var promise = new Promise(function (resolve, reject) {
-            onLoadFn = wrpperFn(resolve);
-            onErrorFn = wrpperFn(reject);
+            onLoadFn = wrapperFn(resolve);
+            onErrorFn = wrapperFn(reject);
         });
         var timeout = this.option.timeout;
         var timeoutId;

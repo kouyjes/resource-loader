@@ -10,6 +10,14 @@ interface ResourceLoaderOption {
     useCache?:Boolean;
     timeout?:number;
 }
+/**
+ * resource define
+ * type: resource type can be js|css ...
+ * urls: url list
+ * serial: load type,load url serial when serial is true
+ * dependence: resource this resource depend
+ * timeout: every url load timeout in ms
+ */
 interface Resource {
     type:String;
     urls:String[];
@@ -27,9 +35,7 @@ class ResourceLoader {
         loaders[type] = loader;
         return ResourceLoader;
     };
-    private option:ResourceLoaderOption = {
-
-    };
+    private option:ResourceLoaderOption = {};
 
     constructor(option?:ResourceLoaderOption) {
         if(option){
