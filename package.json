@@ -1,5 +1,5 @@
 {
-  "name": "resource-loader",
+  "name": "dom-resource-loader",
   "version": "1.0.0",
   "description": "js css loader",
   "main": "index.js",
