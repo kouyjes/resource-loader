@@ -418,6 +418,9 @@ var ResourceLoader = (function () {
             });
         });
     };
+    ResourceLoader.prototype.parseUrl = function (url) {
+        return ResourceUrl.parseUrl(this.option.baseURI, url);
+    };
     ResourceLoader.prototype._load = function (resource) {
         var _this = this;
         var promise;
@@ -425,7 +428,7 @@ var ResourceLoader = (function () {
             promise = this._load(resource.dependence);
         }
         var initiateLoader = function (url) {
-            var _url = _this.option.baseURI ? ResourceUrl.parseUrl(_this.option.baseURI, url) : url;
+            var _url = _this.option.baseURI ? _this.parseUrl(url) : url;
             var type = resource.type;
             if (type) {
                 type = type.toLowerCase();
