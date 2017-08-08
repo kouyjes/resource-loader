@@ -86,6 +86,9 @@ class ResourceLoader {
             });
         });
     }
+    parseUrl(url:String){
+        return ResourceUrl.parseUrl(this.option.baseURI,url);
+    }
     private _load(resource:Resource){
 
         var promise;
@@ -95,7 +98,7 @@ class ResourceLoader {
         }
 
         var initiateLoader = (url) => {
-            var _url = this.option.baseURI ? ResourceUrl.parseUrl(this.option.baseURI,url) : url;
+            var _url = this.option.baseURI ? this.parseUrl(url) : url;
             var type = resource.type;
             if(type){
                 type = type.toLowerCase();
@@ -146,4 +149,4 @@ class ResourceLoader {
     }
 }
 
-export { ResourceLoader,ResourceUrl }
+export { ResourceLoader }
