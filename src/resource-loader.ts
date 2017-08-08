@@ -146,4 +146,4 @@ class ResourceLoader {
     }
 }
 
-export { ResourceLoader }
+export { ResourceLoader,ResourceUrl }
