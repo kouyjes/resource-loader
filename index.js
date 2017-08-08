@@ -1,2 +1,2 @@
-var resourceLoader = require('./dest/resource-loader');
-module.exports = resourceLoader;
+
+module.exports = require('./dest/resource-loader');
