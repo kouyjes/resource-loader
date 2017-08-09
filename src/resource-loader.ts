@@ -33,14 +33,36 @@ var loaders = {
     css:CssLoader
 };
 loaders = Object.create(loaders);
+enum LoaderEvent{
+    LoadStart = 'loadStart',
+    LoadFinished = 'loadFinished',
+    LoadError = 'loadError'
+}
 class ResourceLoader {
-    static loadStart:Function;
-    static loadFinished:Function;
-    static loadError:Function;
-    static triggerLoadEvent(fn:Function){
-        if(isFunction(fn)){
-            fn();
+    private static loadEventListener = {};
+    static addEventListener = function (eventType:String,handler:Function) {
+        var listeners = ResourceLoader.loadEventListener[eventType] || [];
+        if(isFunction(handler) && listeners.indexOf(handler) === -1){
+            listeners.push(handler);
+            ResourceLoader.loadEventListener[eventType] = listeners;
         }
+    };
+    static removeEventListener = function (eventType:String,handler:Function) {
+        var listeners = ResourceLoader.loadEventListener[eventType] || [];
+        var index = listeners.indexOf(handler);
+        if(index >= 0){
+            listeners.splice(index,1);
+        }
+    };
+    static triggerLoadEvent(eventType:LoaderEvent,target){
+        var listeners = ResourceLoader.loadEventListener[eventType];
+        listeners && listeners.forEach(function (fn) {
+            try{
+                fn(target);
+            }catch(e){
+                console.error(e);
+            }
+        });
     }
     static registerLoader(type:String,loader:Loader){
         loaders[type] = loader;
@@ -82,13 +104,10 @@ class ResourceLoader {
 
         var params = arguments;
         return new Promise(function (resolve,reject) {
-            ResourceLoader.triggerLoadEvent(ResourceLoader.loadStart)
             loadFn.apply(this,params).then(function () {
                 resolve(loadEvents);
-                ResourceLoader.triggerLoadEvent(ResourceLoader.loadFinished);
             }, function (result) {
                 reject(result);
-                ResourceLoader.triggerLoadEvent(ResourceLoader.loadError)
             });
         });
 
@@ -143,8 +162,19 @@ class ResourceLoader {
             return loader;
         }
         function loaderLoad(loader){
-            return loader.load().then(function (result) {
-                loadEvents.push(result);
+            var target = {
+                url:loader.option.url
+            };
+            return new Promise(function (resolve,reject) {
+                ResourceLoader.triggerLoadEvent(LoaderEvent.LoadStart,target);
+                loader.load().then(function (result) {
+                    loadEvents.push(result);
+                    resolve(result);
+                    ResourceLoader.triggerLoadEvent(LoaderEvent.LoadFinished,target);
+                }, function (result) {
+                    reject(result);
+                    ResourceLoader.triggerLoadEvent(LoaderEvent.LoadError,target);
+                });
             });
         }
         function initPromises(){
@@ -181,4 +211,4 @@ class ResourceLoader {
     }
 }
 
-export { ResourceLoader }
+export { Loader,ResourceLoader }

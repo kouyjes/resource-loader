@@ -133,13 +133,23 @@ var Loader = (function () {
             target: this.el
         };
     };
+    Loader.prototype.load = function () {
+        var _this = this;
+        this.createDom();
+        return new Promise(function (resolve, reject) {
+            _this._load().then(function (data) {
+                resolve(data);
+            }, function (data) {
+                reject(data);
+            });
+        });
+    };
     /**
      * start load
      * @returns {Promise<T>}
      */
-    Loader.prototype.load = function () {
+    Loader.prototype._load = function () {
         var _this = this;
-        this.createDom();
         var el = this.el;
         if (this.isLoaded()) {
             return new Promise(function (resolve, reject) {
@@ -372,6 +382,12 @@ var loaders = {
     css: CssLoader
 };
 loaders = Object.create(loaders);
+var LoaderEvent;
+(function (LoaderEvent) {
+    LoaderEvent[LoaderEvent["LoadStart"] = 'loadStart'] = "LoadStart";
+    LoaderEvent[LoaderEvent["LoadFinished"] = 'loadFinished'] = "LoadFinished";
+    LoaderEvent[LoaderEvent["LoadError"] = 'loadError'] = "LoadError";
+})(LoaderEvent || (LoaderEvent = {}));
 var ResourceLoader = (function () {
     function ResourceLoader(option) {
         this.option = {};
@@ -379,10 +395,16 @@ var ResourceLoader = (function () {
             Object.assign(this.option, option);
         }
     }
-    ResourceLoader.triggerLoadEvent = function (fn) {
-        if (isFunction(fn)) {
-            fn();
-        }
+    ResourceLoader.triggerLoadEvent = function (eventType, target) {
+        var listeners = ResourceLoader.loadEventListener[eventType];
+        listeners && listeners.forEach(function (fn) {
+            try {
+                fn(target);
+            }
+            catch (e) {
+                console.error(e);
+            }
+        });
     };
     ResourceLoader.registerLoader = function (type, loader) {
         loaders[type] = loader;
@@ -426,13 +448,10 @@ var ResourceLoader = (function () {
         };
         var params = arguments;
         return new Promise(function (resolve, reject) {
-            ResourceLoader.triggerLoadEvent(ResourceLoader.loadStart);
             loadFn.apply(this, params).then(function () {
                 resolve(loadEvents);
-                ResourceLoader.triggerLoadEvent(ResourceLoader.loadFinished);
             }, function (result) {
                 reject(result);
-                ResourceLoader.triggerLoadEvent(ResourceLoader.loadError);
             });
         });
     };
@@ -485,8 +504,19 @@ var ResourceLoader = (function () {
             return loader;
         };
         function loaderLoad(loader) {
-            return loader.load().then(function (result) {
-                loadEvents.push(result);
+            var target = {
+                url: loader.option.url
+            };
+            return new Promise(function (resolve, reject) {
+                ResourceLoader.triggerLoadEvent(LoaderEvent.LoadStart, target);
+                loader.load().then(function (result) {
+                    loadEvents.push(result);
+                    resolve(result);
+                    ResourceLoader.triggerLoadEvent(LoaderEvent.LoadFinished, target);
+                }, function (result) {
+                    reject(result);
+                    ResourceLoader.triggerLoadEvent(LoaderEvent.LoadError, target);
+                });
             });
         }
         function initPromises() {
@@ -521,6 +551,21 @@ var ResourceLoader = (function () {
             promise = Promise.all(initPromises());
         }
         return promise;
+    };
+    ResourceLoader.loadEventListener = {};
+    ResourceLoader.addEventListener = function (eventType, handler) {
+        var listeners = ResourceLoader.loadEventListener[eventType] || [];
+        if (isFunction(handler) && listeners.indexOf(handler) === -1) {
+            listeners.push(handler);
+            ResourceLoader.loadEventListener[eventType] = listeners;
+        }
+    };
+    ResourceLoader.removeEventListener = function (eventType, handler) {
+        var listeners = ResourceLoader.loadEventListener[eventType] || [];
+        var index = listeners.indexOf(handler);
+        if (index >= 0) {
+            listeners.splice(index, 1);
+        }
     };
     return ResourceLoader;
 }());

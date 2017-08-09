@@ -128,12 +128,21 @@ abstract class Loader {
             target:this.el
         };
     }
+    load():Promise{
+        this.createDom();
+        return new Promise((resolve,reject) => {
+            this._load().then(function (data) {
+                resolve(data);
+            }, function (data) {
+                reject(data);
+            });
+        });
+    }
     /**
      * start load
      * @returns {Promise<T>}
      */
-    load():Promise {
-        this.createDom();
+    _load():Promise {
         var el = this.el;
         if(this.isLoaded()){
 

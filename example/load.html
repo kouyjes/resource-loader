@@ -35,15 +35,14 @@
             //timeout:1000,
             urls:['http://localhost:7771/test/test.css','http://localhost:7771/test/test1.css']
         };
-        HERE.ResourceLoader.loadStart = function () {
-            console.log('start loading ....');
-        }
-        HERE.ResourceLoader.loadFinished = function () {
-            console.log('load finished ....');
-        }
-        HERE.ResourceLoader.loadError = function () {
-            console.log('load error ....');
-        }
+        HERE.ResourceLoader.addEventListener('loadStart', function (target) {
+            console.log('loadStart ....');
+            console.log(target);
+        });
+        HERE.ResourceLoader.addEventListener('loadFinished', function (target) {
+            console.log('loadFinished ....');
+            console.log(target);
+        });
         function loadResource(){
             for(var i = 0;i < 1;i++){
                 (function(){
