@@ -22,6 +22,7 @@ function wrapperFn(fn) {
  */
 var LoaderState;
 (function (LoaderState) {
+    LoaderState[LoaderState["Null"] = 'null'] = "Null";
     LoaderState[LoaderState["Init"] = 'init'] = "Init";
     LoaderState[LoaderState["Pending"] = 'pending'] = "Pending";
     LoaderState[LoaderState["Finished"] = 'finished'] = "Finished";
@@ -96,6 +97,9 @@ var Loader = (function () {
     };
     Loader.prototype.loadState = function (state) {
         var el = this.el;
+        if (!el) {
+            return LoaderState.Null;
+        }
         if (arguments.length === 0) {
             return el['state'];
         }
@@ -103,7 +107,7 @@ var Loader = (function () {
             el['state'] = state;
         }
     };
-    Loader.prototype.invokeCallbacks = function (type, params, context) {
+    Loader.prototype.invokeCallbacks = function (type) {
         var el = this.el;
         var callbacks = el.loadCallbacks;
         if (!callbacks) {
@@ -113,13 +117,21 @@ var Loader = (function () {
             var fnObject = callbacks[key], fn = fnObject[type];
             if (fn) {
                 try {
-                    fn.apply(context, params);
+                    fn();
                 }
                 catch (err) {
                     console.error(err);
                 }
             }
         });
+    };
+    Loader.prototype.createLoadEvent = function (state) {
+        if (state === void 0) { state = 'success'; }
+        return {
+            state: state,
+            url: this.option.url,
+            target: this.el
+        };
     };
     /**
      * start load
@@ -133,10 +145,10 @@ var Loader = (function () {
             return new Promise(function (resolve, reject) {
                 var loadState = _this.loadState();
                 if (!loadState || loadState === LoaderState.Finished) {
-                    resolve();
+                    resolve(_this.createLoadEvent());
                 }
                 else {
-                    reject('error');
+                    reject(_this.createLoadEvent('error'));
                 }
             });
         }
@@ -154,31 +166,31 @@ var Loader = (function () {
         }
         var timestamp = this.timestamp;
         var loadCallback = {
-            load: function (e) {
+            load: function () {
                 delete loadCallbacks[timestamp];
                 clearTimeout(timeoutId);
                 _this.loadState(LoaderState.Finished);
-                onLoadFn.apply(el, arguments);
+                onLoadFn.call(undefined, _this.createLoadEvent());
             },
-            error: function (e) {
+            error: function () {
                 delete loadCallbacks[timestamp];
                 clearTimeout(timeoutId);
                 _this.loadState(LoaderState.Error);
-                onErrorFn.apply(el, arguments);
+                onErrorFn.call(undefined, _this.createLoadEvent('error'));
             },
-            timeout: function (e) {
-                onErrorFn.apply(el, arguments);
+            timeout: function () {
+                onErrorFn.call(undefined, _this.createLoadEvent('timeout'));
             }
         };
         loadCallbacks[timestamp] = loadCallback;
         if (!callbackInit) {
-            el.onload = el['onreadystatechange'] = function (e) {
+            el.onload = el['onreadystatechange'] = function () {
                 var stateText = el['readyState'];
                 if (stateText && !/^c|loade/.test(stateText))
                     return;
-                _this.invokeCallbacks('load', [e], el);
+                _this.invokeCallbacks('load');
             };
-            el.onerror = function (e) {
+            el.onerror = function () {
                 var comment = document.createComment('Loader load error, Url: ' + _this.option.url + ' ,loadTime:' + (new Date()));
                 if (el.parentNode) {
                     el.parentNode.replaceChild(comment, el);
@@ -186,7 +198,7 @@ var Loader = (function () {
                 else {
                     document.head.appendChild(comment);
                 }
-                _this.invokeCallbacks('error', [e], el);
+                _this.invokeCallbacks('error');
             };
         }
         this.appendToDom();
@@ -352,6 +364,9 @@ function polyfill() {
 }
 
 polyfill();
+function isFunction(fn) {
+    return typeof fn === 'function';
+}
 var loaders = {
     js: JsLoader,
     css: CssLoader
@@ -364,6 +379,11 @@ var ResourceLoader = (function () {
             Object.assign(this.option, option);
         }
     }
+    ResourceLoader.triggerLoadEvent = function (fn) {
+        if (isFunction(fn)) {
+            fn();
+        }
+    };
     ResourceLoader.registerLoader = function (type, loader) {
         loaders[type] = loader;
         return ResourceLoader;
@@ -380,26 +400,46 @@ var ResourceLoader = (function () {
         for (var _i = 1; _i < arguments.length; _i++) {
             other[_i - 1] = arguments[_i];
         }
-        var promises = [];
-        if (!(resource instanceof Array)) {
-            promises.push(this._loadResource(resource));
-        }
-        else {
-            resource.forEach(function (resource) {
-                promises.push(_this._loadResource(resource));
+        var loadEvents = [];
+        var loadFn = function (resource) {
+            var other = [];
+            for (var _i = 1; _i < arguments.length; _i++) {
+                other[_i - 1] = arguments[_i];
+            }
+            var promises = [];
+            if (!(resource instanceof Array)) {
+                promises.push(_this._loadResource(resource, loadEvents));
+            }
+            else {
+                resource.forEach(function (resource) {
+                    promises.push(_this._loadResource(resource, loadEvents));
+                });
+            }
+            var promise = Promise.all(promises);
+            other.forEach(function (resource) {
+                promise = promise.then(function () {
+                    var _resource = Object.create(resource);
+                    return loadFn(_resource);
+                });
             });
-        }
-        var promise = Promise.all(promises);
-        other.forEach(function (resource) {
-            promise = promise.then(function () {
-                return _this.load(resource);
+            return promise;
+        };
+        var params = arguments;
+        return new Promise(function (resolve, reject) {
+            ResourceLoader.triggerLoadEvent(ResourceLoader.loadStart);
+            loadFn.apply(this, params).then(function () {
+                resolve(loadEvents);
+                ResourceLoader.triggerLoadEvent(ResourceLoader.loadFinished);
+            }, function (result) {
+                reject(result);
+                ResourceLoader.triggerLoadEvent(ResourceLoader.loadError);
             });
         });
-        return promise;
     };
-    ResourceLoader.prototype._loadResource = function (resource) {
+    ResourceLoader.prototype._loadResource = function (resource, loadEvents) {
+        if (loadEvents === void 0) { loadEvents = []; }
         var timeout = this.option.timeout;
-        var promise = this._load(resource);
+        var promise = this.__load(resource, loadEvents);
         if (!timeout) {
             return promise;
         }
@@ -421,11 +461,11 @@ var ResourceLoader = (function () {
     ResourceLoader.prototype.parseUrl = function (url) {
         return ResourceUrl.parseUrl(this.option.baseURI, url);
     };
-    ResourceLoader.prototype._load = function (resource) {
+    ResourceLoader.prototype.__load = function (resource, loadEvents) {
         var _this = this;
         var promise;
         if (resource.dependence) {
-            promise = this._load(resource.dependence);
+            promise = this.__load(resource.dependence, loadEvents);
         }
         var initiateLoader = function (url) {
             var _url = _this.option.baseURI ? _this.parseUrl(url) : url;
@@ -444,6 +484,11 @@ var ResourceLoader = (function () {
             });
             return loader;
         };
+        function loaderLoad(loader) {
+            return loader.load().then(function (result) {
+                loadEvents.push(result);
+            });
+        }
         function initPromises() {
             var promises = [];
             if (resource.serial) {
@@ -451,18 +496,18 @@ var ResourceLoader = (function () {
                     var loader = initiateLoader(url);
                     if (promises.length > 0) {
                         promises[0] = promises[0].then(function () {
-                            return loader.load();
+                            return loaderLoad(loader);
                         });
                     }
                     else {
-                        promises.push(loader.load());
+                        promises.push(loaderLoad(loader));
                     }
                 });
             }
             else {
                 resource.urls.forEach(function (url) {
                     var loader = initiateLoader(url);
-                    promises.push(loader.load());
+                    promises.push(loaderLoad(loader));
                 });
             }
             return promises;

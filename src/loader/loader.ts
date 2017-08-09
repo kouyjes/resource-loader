@@ -19,6 +19,7 @@ interface LoaderOption{
  * load state
  */
 enum LoaderState{
+    Null = 'null',
     Init = 'init',
     Pending = 'pending',
     Finished = 'finished',
@@ -93,13 +94,16 @@ abstract class Loader {
     }
     loadState(state){
         var el = this.el;
+        if(!el){
+            return LoaderState.Null;
+        }
         if(arguments.length === 0){
             return el['state'];
         }else{
             el['state'] = state;
         }
     }
-    private invokeCallbacks(type,params,context){
+    private invokeCallbacks(type){
         var el = this.el;
         var callbacks = el.loadCallbacks;
         if(!callbacks){
@@ -110,14 +114,20 @@ abstract class Loader {
                 fn = fnObject[type];
             if(fn){
                 try{
-                    fn.apply(context,params);
+                    fn();
                 }catch(err){
                     console.error(err);
                 }
             }
         });
     }
-
+    protected createLoadEvent(state:String = 'success'){
+        return {
+            state:state,
+            url:this.option.url,
+            target:this.el
+        };
+    }
     /**
      * start load
      * @returns {Promise<T>}
@@ -130,9 +140,9 @@ abstract class Loader {
             return new Promise((resolve,reject) => {
                 var loadState = this.loadState();
                 if(!loadState || loadState === LoaderState.Finished){
-                    resolve();
+                    resolve(this.createLoadEvent());
                 }else{
-                    reject('error');
+                    reject(this.createLoadEvent('error'));
                 }
             });
         }
@@ -150,37 +160,37 @@ abstract class Loader {
         }
         var timestamp = this.timestamp;
         var loadCallback = {
-            load:(e) => {
+            load:() => {
                 delete loadCallbacks[timestamp];
                 clearTimeout(timeoutId);
                 this.loadState(LoaderState.Finished);
-                onLoadFn.apply(el, arguments);
+                onLoadFn.call(undefined, this.createLoadEvent());
             },
-            error:(e) => {
+            error:() => {
                 delete loadCallbacks[timestamp];
                 clearTimeout(timeoutId);
                 this.loadState(LoaderState.Error);
-                onErrorFn.apply(el, arguments);
+                onErrorFn.call(undefined, this.createLoadEvent('error'));
             },
-            timeout:(e) => {
-                onErrorFn.apply(el, arguments);
+            timeout:() => {
+                onErrorFn.call(undefined, this.createLoadEvent('timeout'));
             }
         };
         loadCallbacks[timestamp] = loadCallback;
         if(!callbackInit){
-            el.onload = el['onreadystatechange'] = (e) => {
+            el.onload = el['onreadystatechange'] = () => {
                 var stateText = el['readyState'];
                 if (stateText && !/^c|loade/.test(stateText)) return;
-                this.invokeCallbacks('load',[e],el);
+                this.invokeCallbacks('load');
             };
-            el.onerror = (e) => {
+            el.onerror = () => {
                 var comment = document.createComment('Loader load error, Url: ' + this.option.url + ' ,loadTime:' + (new Date()));
                 if(el.parentNode){
                     el.parentNode.replaceChild(comment,el);
                 }else{
                     document.head.appendChild(comment);
                 }
-                this.invokeCallbacks('error',[e],el);
+                this.invokeCallbacks('error');
             };
         }
 

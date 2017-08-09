@@ -35,12 +35,22 @@
             //timeout:1000,
             urls:['http://localhost:7771/test/test.css','http://localhost:7771/test/test1.css']
         };
+        HERE.ResourceLoader.loadStart = function () {
+            console.log('start loading ....');
+        }
+        HERE.ResourceLoader.loadFinished = function () {
+            console.log('load finished ....');
+        }
+        HERE.ResourceLoader.loadError = function () {
+            console.log('load error ....');
+        }
         function loadResource(){
             for(var i = 0;i < 1;i++){
                 (function(){
                     var index = i;
                     loader.load([cssResource,jsResource]).then(function () {
                         console.log('loaded finish ! :' + index);
+                        console.log(arguments);
                     },function(e){
                         console.log(e);
                     });
