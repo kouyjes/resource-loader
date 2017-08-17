@@ -7,7 +7,6 @@ polyfill();
 interface ResourceLoaderOption {
     baseURI?:String;
     params?:Object
-    useCache?:Boolean;
     timeout?:number;
 }
 /**
@@ -68,6 +67,10 @@ class ResourceLoader {
         loaders[type] = loader;
         return ResourceLoader;
     };
+    static load = function (resource:Resource|Resource[],...other:Resource[]) {
+        var loader = new ResourceLoader();
+        return loader.load.apply(loader,arguments);
+    }
     private option:ResourceLoaderOption = {};
 
     constructor(option?:ResourceLoaderOption) {

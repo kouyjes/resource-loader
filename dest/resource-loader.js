@@ -567,6 +567,14 @@ var ResourceLoader = (function () {
             listeners.splice(index, 1);
         }
     };
+    ResourceLoader.load = function (resource) {
+        var other = [];
+        for (var _i = 1; _i < arguments.length; _i++) {
+            other[_i - 1] = arguments[_i];
+        }
+        var loader = new ResourceLoader();
+        return loader.load.apply(loader, arguments);
+    };
     return ResourceLoader;
 }());
 
@@ -574,6 +582,7 @@ exports.Loader = Loader;
 exports.JsLoader = JsLoader;
 exports.CssLoader = CssLoader;
 exports.ResourceLoader = ResourceLoader;
+exports.ResourceUrl = ResourceUrl;
 
 Object.defineProperty(exports, '__esModule', { value: true });
 
