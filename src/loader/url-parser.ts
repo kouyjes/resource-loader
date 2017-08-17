@@ -8,13 +8,16 @@ class ResourceUrl{
             url = '';
         }
         urlDom.href = url;
-        if(urlDom.href === url || urlDom === url + '/'){
+        if(url.startsWith('/')){
+            return urlDom.href;
+        }
+        if(urlDom.href === url || urlDom.href === url + '/'){
             return url;
         }
         urlDom.href = baseURI;
         var prefixUrl = urlDom.href;
         prefixUrl = prefixUrl.replace(/\/+$/,'');
-        url = url.replace(/^ \/+/,'');
+        url = url.replace(/^\/+/,'');
         return prefixUrl + '/' + url;
     };
 }
