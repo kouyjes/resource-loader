@@ -115,8 +115,8 @@ var Loader = (function () {
             var req = RequestCache[url];
             req.data = result;
             req.status = 1;
-            req.calls.forEach(function (req) {
-                var resolve = req.resolve;
+            req.calls.forEach(function (call) {
+                var resolve = call.resolve;
                 try {
                     resolve(result);
                 }
@@ -129,8 +129,8 @@ var Loader = (function () {
             var req = RequestCache[url];
             req.data = e;
             req.status = 2;
-            req.calls.forEach(function (req) {
-                var reject = req.resolve;
+            req.calls.forEach(function (call) {
+                var reject = call.resolve;
                 try {
                     console.error(e);
                     reject(e);
