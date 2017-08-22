@@ -96,7 +96,7 @@ var Loader = (function () {
             }
             request = RequestCache[url] = {
                 status: 1,
-                calls: []
+                calls: [p]
             };
         }
         else {

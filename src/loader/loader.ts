@@ -98,7 +98,7 @@ class Loader {
             }
             request = RequestCache[url] = {
                 status:1,
-                calls:[]
+                calls:[p]
             };
         }else{
             if(request.status === 1){
