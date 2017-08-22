@@ -132,23 +132,26 @@ class Loader {
             req.calls.forEach(function (req) {
                 var reject = req.resolve;
                 try{
-                    reject(e)
-                }catch(e){
                     console.error(e);
+                    reject(e);
+                }catch(err){
+                    console.error(err);
                 }
             });
             req.calls.length = 0;
         });
 
-        setTimeout(() => {
-            var req = RequestCache[url];
-            var index = req.calls.indexOf(call);
-            if(index >= 0){
-                req.calls.splice(index,1);
-                call.reject(this.createLoadEvent('timeout'));
-            }
+        if(typeof this.option.timeout === 'number'){
+            setTimeout(() => {
+                var req = RequestCache[url];
+                var index = req.calls.indexOf(call);
+                if(index >= 0){
+                    req.calls.splice(index,1);
+                    call.reject(this.createLoadEvent('timeout'));
+                }
 
-        },this.option.timeout);
+            },this.option.timeout);
+        }
 
         return p;
     }
