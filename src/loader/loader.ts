@@ -42,7 +42,7 @@ class Loader {
     }
     protected isExistEl();
     protected createDom(){}
-    protected finalURL(){
+    finalURL(){
         var url = this.option.url;
         var params = this.option.params;
         if(!params){
@@ -97,8 +97,8 @@ class Loader {
                 return p;
             }
             request = RequestCache[url] = {
-                status:1,
-                calls:[p]
+                status:0,
+                calls:[call]
             };
         }else{
             if(request.status === 1){
@@ -129,10 +129,10 @@ class Loader {
             var req = RequestCache[url];
             req.data = e;
             req.status = 2;
+            console.error(e);
             req.calls.forEach(function (call) {
-                var reject = call.resolve;
+                var reject = call.reject;
                 try{
-                    console.error(e);
                     reject(e);
                 }catch(err){
                     console.error(err);

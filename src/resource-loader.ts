@@ -167,9 +167,9 @@ class ResourceLoader {
             });
             return loader;
         }
-        function loaderLoad(loader){
+        function loaderLoad(loader:Loader){
             var target = {
-                url:loader.option.url
+                url:loader.finalURL()
             };
             return new Promise(function (resolve,reject) {
                 ResourceLoader.triggerLoadEvent(LoaderEvent.LoadStart,target);

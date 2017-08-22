@@ -95,8 +95,8 @@ var Loader = (function () {
                 return p;
             }
             request = RequestCache[url] = {
-                status: 1,
-                calls: [p]
+                status: 0,
+                calls: [call]
             };
         }
         else {
@@ -129,10 +129,10 @@ var Loader = (function () {
             var req = RequestCache[url];
             req.data = e;
             req.status = 2;
+            console.error(e);
             req.calls.forEach(function (call) {
-                var reject = call.resolve;
+                var reject = call.reject;
                 try {
-                    console.error(e);
                     reject(e);
                 }
                 catch (err) {
@@ -463,7 +463,7 @@ var ResourceLoader = (function () {
         };
         function loaderLoad(loader) {
             var target = {
-                url: loader.option.url
+                url: loader.finalURL()
             };
             return new Promise(function (resolve, reject) {
                 ResourceLoader.triggerLoadEvent(LoaderEvent.LoadStart, target);

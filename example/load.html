@@ -22,7 +22,7 @@
             type:'js',
             serial:true,
             //timeout:1000,
-            urls:['test/js/a.js','http://localhost:7771/test/test.js','test/js/b.js'],
+            urls:['test/js/a.js','http://localhost:8080/node_modules/injector-ioc/dest/injector.js','test/js/b.js'],
             dependence:{
                 type:'js',
                 serial:true,
@@ -33,7 +33,7 @@
             type:'css',
             serial:true,
             //timeout:1000,
-            urls:['http://localhost:7771/test/test.css','http://localhost:7771/test/test1.css']
+            urls:['http://localhost:8080/app/common-comp/component/iframe.comp.css','http://localhost:8080/index.css']
         };
         HERE.ResourceLoader.addEventListener('loadStart', function (target) {
             console.log('loadStart ....');
