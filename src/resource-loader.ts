@@ -137,6 +137,9 @@ class ResourceLoader {
         });
     }
     parseUrl(url:String){
+        if(!this.option.baseURI){
+           return url;
+        }
         return ResourceUrl.parseUrl(this.option.baseURI,url);
     }
     private __load(resource:Resource,loadEvents:any[]){
@@ -148,7 +151,7 @@ class ResourceLoader {
         }
 
         var initiateLoader = (url) => {
-            var _url = this.option.baseURI ? this.parseUrl(url) : url;
+            var _url = this.parseUrl(url);
             var type = resource.type;
             if(type){
                 type = type.toLowerCase();

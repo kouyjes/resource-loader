@@ -1,33 +1,28 @@
 import { Loader,LoaderOption,LoaderState } from './loader';
 import { ResourceUrl } from '../loader/url-parser';
 class CssLoader extends Loader {
-    private getExistElement(url){
-        url = ResourceUrl.parseUrl('',url);
+    protected isExistEl(){
+        var url = this.finalURL();
         var links = Array.prototype.slice.call(document.getElementsByTagName('link'),0);
-        var link = null;
-        links.some(function (lnk) {
+
+        return links.some(function (lnk) {
             var href = lnk.href;
             if(!href){
                 return;
             }
-            href = href.replace(/\?.*/,'');
+
             href = ResourceUrl.parseUrl('',href);
             if(href === url){
-                link = lnk;
                 return true;
             }
         });
-        return link;
+
     }
     protected createDom(){
-        this.el = this.getExistElement(this.option.url);
-        if(!this.el){
-            this.el = document.createElement('link');
-            this.el.type = 'text/css';
-            this.el.rel = 'stylesheet';
-            this.el['href'] = this.finalURL();
-            this.loadState(LoaderState.Init)
-        }
+        this.el = document.createElement('link');
+        this.el.type = 'text/css';
+        this.el.rel = 'stylesheet';
+        this.el['href'] = this.finalURL();
     }
     private isUseCssLoadPatch(){
         var useCssLoadPatch = false;
@@ -57,7 +52,7 @@ class CssLoader extends Loader {
                     return;
                 }
                 if(el.sheet){
-                    el.onload();
+                    el.onload(this.createLoadEvent('success'));
                 }else{
                     setTimeout(checkLoad ,20);
                 }

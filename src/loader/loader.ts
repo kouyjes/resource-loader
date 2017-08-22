@@ -1,4 +1,4 @@
-/// <reference path="../types/type.d.ts" />
+
 function wrapperFn(fn) {
     return function () {
         fn.apply(this, arguments);
@@ -15,16 +15,7 @@ interface LoaderOption{
     params?:Object;
     timeout?:number;
 }
-/**
- * load state
- */
-enum LoaderState{
-    Null = 'null',
-    Init = 'init',
-    Pending = 'pending',
-    Finished = 'finished',
-    Error = 'error'
-}
+
 var nextId = (function () {
     var id = 1;
     return function () {
@@ -34,7 +25,8 @@ var nextId = (function () {
 /**
  * base abstract class loader
  */
-abstract class Loader {
+const RequestCache = {};
+class Loader {
     protected option:LoaderOption = {
         url:''
     };
@@ -48,15 +40,8 @@ abstract class Loader {
     protected appendToDom() {
         document.head.appendChild(this.el);
     }
-    protected createDom(){
-    }
-    protected isLoaded(){
-        var loadState = this.loadState();
-        if(!loadState){
-            return true;
-        }
-        return loadState === LoaderState.Finished;
-    }
+    protected isExistEl();
+    protected createDom(){}
     protected finalURL(){
         var url = this.option.url;
         var params = this.option.params;
@@ -80,134 +65,125 @@ abstract class Loader {
         url = url + queryString;
         return url;
     }
-    protected initTimeoutEvent(){
-        var evt = document.createEvent('CustomEvent');
-        evt.initEvent('timeout',false,false);
-        return evt;
-    }
-    timeout(){
-        var el = this.el;
-        if(el.onerror && el.loadCallbacks){
-            var fnObject = el.loadCallbacks[this.timestamp];
-            fnObject && fnObject.timeout.call(el,this.initTimeoutEvent());
-        }
-    }
-    loadState(state){
-        var el = this.el;
-        if(!el){
-            return LoaderState.Null;
-        }
-        if(arguments.length === 0){
-            return el['state'];
-        }else{
-            el['state'] = state;
-        }
-    }
-    private invokeCallbacks(type){
-        var el = this.el;
-        var callbacks = el.loadCallbacks;
-        if(!callbacks){
-            return;
-        }
-        Object.keys(callbacks).forEach(function (key) {
-            var fnObject = callbacks[key],
-                fn = fnObject[type];
-            if(fn){
-                try{
-                    fn();
-                }catch(err){
-                    console.error(err);
-                }
-            }
-        });
-    }
     protected createLoadEvent(state:String = 'success'){
         return {
             state:state,
-            url:this.option.url,
+            url:this.finalURL(),
             target:this.el
         };
     }
-    load():Promise{
-        this.createDom();
-        return new Promise((resolve,reject) => {
-            this._load().then(function (data) {
-                resolve(data);
-            }, function (data) {
-                reject(data);
-            });
+
+    load(force = false):Promise{
+
+        if(force){
+            return this._load();
+        }
+        var url = this.finalURL();
+        var request = RequestCache[url];
+
+        var resolve,reject;
+        var p = new Promise(function (_resolve, _reject) {
+            resolve = _resolve;
+            reject = _reject;
         });
+
+        var call = {
+            resolve:resolve,
+            reject:reject
+        };
+        if(!request){
+            if(this.isExistEl()){
+                resolve(this.createLoadEvent('success'));
+                return p;
+            }
+            request = RequestCache[url] = {
+                status:1,
+                calls:[]
+            };
+        }else{
+            if(request.status === 1){
+                resolve(request.data);
+            }else if(request.status === 2){
+                reject(request.data);
+            }else{
+                request.calls.push(call);
+            }
+
+            return p;
+        }
+
+        this._load().then(function (result) {
+            var req = RequestCache[url];
+            req.data = result;
+            req.status = 1;
+            req.calls.forEach(function (req) {
+                var resolve = req.resolve;
+                try{
+                    resolve(result)
+                }catch(e){
+                    console.error(e);
+                }
+            });
+            req.calls.length = 0;
+        }, function (e) {
+            var req = RequestCache[url];
+            req.data = e;
+            req.status = 2;
+            req.calls.forEach(function (req) {
+                var reject = req.resolve;
+                try{
+                    reject(e)
+                }catch(e){
+                    console.error(e);
+                }
+            });
+            req.calls.length = 0;
+        });
+
+        setTimeout(() => {
+            var req = RequestCache[url];
+            var index = req.calls.indexOf(call);
+            if(index >= 0){
+                req.calls.splice(index,1);
+                call.reject(this.createLoadEvent('timeout'));
+            }
+
+        },this.option.timeout);
+
+        return p;
     }
     /**
      * start load
      * @returns {Promise<T>}
      */
     _load():Promise {
-        var el = this.el;
-        if(this.isLoaded()){
 
-            return new Promise((resolve,reject) => {
-                var loadState = this.loadState();
-                if(!loadState || loadState === LoaderState.Finished){
-                    resolve(this.createLoadEvent());
-                }else{
-                    reject(this.createLoadEvent('error'));
-                }
-            });
-        }
+        this.createDom();
+        var el = this.el;
+
         var onLoadFn, onErrorFn;
         var promise = new Promise((resolve, reject) => {
             onLoadFn = wrapperFn(resolve);
             onErrorFn = wrapperFn(reject);
         });
-        var timeout = this.option.timeout;
-        var timeoutId;
-        var loadCallbacks = el.loadCallbacks;
-        var callbackInit = !!loadCallbacks;
-        if(!callbackInit){
-            loadCallbacks = el.loadCallbacks = {};
-        }
-        var timestamp = this.timestamp;
-        var loadCallback = {
-            load:() => {
-                delete loadCallbacks[timestamp];
-                clearTimeout(timeoutId);
-                this.loadState(LoaderState.Finished);
-                onLoadFn.call(undefined, this.createLoadEvent());
-            },
-            error:() => {
-                delete loadCallbacks[timestamp];
-                clearTimeout(timeoutId);
-                this.loadState(LoaderState.Error);
-                onErrorFn.call(undefined, this.createLoadEvent('error'));
-            },
-            timeout:() => {
-                onErrorFn.call(undefined, this.createLoadEvent('timeout'));
-            }
+
+        el.onload = el['onreadystatechange'] = () => {
+            var stateText = el['readyState'];
+            if (stateText && !/^c|loade/.test(stateText)) return;
+            onLoadFn(this.createLoadEvent('success'));
         };
-        loadCallbacks[timestamp] = loadCallback;
-        if(!callbackInit){
-            el.onload = el['onreadystatechange'] = () => {
-                var stateText = el['readyState'];
-                if (stateText && !/^c|loade/.test(stateText)) return;
-                this.invokeCallbacks('load');
-            };
-            el.onerror = () => {
-                var comment = document.createComment('Loader load error, Url: ' + this.option.url + ' ,loadTime:' + (new Date()));
-                if(el.parentNode){
-                    el.parentNode.replaceChild(comment,el);
-                }else{
-                    document.head.appendChild(comment);
-                }
-                this.invokeCallbacks('error');
-            };
-        }
+        el.onerror = () => {
+            var comment = document.createComment('Loader load error, Url: ' + this.option.url + ' ,loadTime:' + (new Date()));
+            if(el.parentNode){
+                el.parentNode.replaceChild(comment,el);
+            }else{
+                document.head.appendChild(comment);
+            }
+            onErrorFn(this.createLoadEvent('error'));
+        };
 
         this.appendToDom();
 
-        timeoutId = timeout && setTimeout(() => {
-            this.timeout();
-        },timeout);
         return promise;
     }
 }
