@@ -16,6 +16,11 @@ function wrapperFn(fn) {
         fn.apply(this, arguments);
     };
 }
+var LoaderEnvModel;
+(function (LoaderEnvModel) {
+    LoaderEnvModel[LoaderEnvModel["PRODUCT"] = 'product'] = "PRODUCT";
+    LoaderEnvModel[LoaderEnvModel["DEVELOP"] = 'develop'] = "DEVELOP";
+})(LoaderEnvModel || (LoaderEnvModel = {}));
 var nextId = (function () {
     var id = 1;
     return function () {
@@ -183,6 +188,11 @@ var Loader = (function () {
             if (stateText && !/^c|loade/.test(stateText))
                 return;
             onLoadFn(_this.createLoadEvent('success'));
+            if (Loader.ENV_MODE === LoaderEnvModel.PRODUCT) {
+                if (el.parentNode) {
+                    el.parentNode.removeChild(el);
+                }
+            }
         };
         el.onerror = function () {
             var comment = document.createComment('Loader load error, Url: ' + _this.option.url + ' ,loadTime:' + (new Date()));
@@ -197,6 +207,7 @@ var Loader = (function () {
         this.appendToDom();
         return promise;
     };
+    Loader.ENV_MODE = LoaderEnvModel.PRODUCT;
     Loader.GlobalParam = {};
     return Loader;
 }());

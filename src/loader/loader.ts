@@ -4,6 +4,10 @@ function wrapperFn(fn) {
         fn.apply(this, arguments);
     }
 }
+enum LoaderEnvModel{
+    PRODUCT = 'product',
+    DEVELOP = 'develop'
+}
 /**
  * loader config option
  * url: resource url
@@ -27,6 +31,7 @@ var nextId = (function () {
  */
 const RequestCache = {};
 abstract class Loader {
+    static ENV_MODE:LoaderEnvModel = LoaderEnvModel.PRODUCT;
     static GlobalParam = {};
     protected option:LoaderOption = {
         url:''
@@ -182,6 +187,11 @@ abstract class Loader {
             var stateText = el['readyState'];
             if (stateText && !/^c|loade/.test(stateText)) return;
             onLoadFn(this.createLoadEvent('success'));
+            if(Loader.ENV_MODE === LoaderEnvModel.PRODUCT){
+                if(el.parentNode){
+                    el.parentNode.removeChild(el);
+                }
+            }
         };
         el.onerror = () => {
             var comment = document.createComment('Loader load error, Url: ' + this.option.url + ' ,loadTime:' + (new Date()));
