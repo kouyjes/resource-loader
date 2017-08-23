@@ -85,6 +85,30 @@ var Loader = (function () {
             target: this.el
         };
     };
+    Loader.executeCalls = function (loader, type, data) {
+        var req = RequestCache[loader.finalURL()];
+        if (!req) {
+            return;
+        }
+        req.data = data;
+        if (type === 'resolve') {
+            req.status = 1;
+        }
+        else if (type === 'reject') {
+            req.status = 2;
+            console.error(data);
+        }
+        req.calls.forEach(function (call) {
+            var fn = call[type];
+            try {
+                fn(data);
+            }
+            catch (e) {
+                console.error(e);
+            }
+        });
+        req.calls.length = 0;
+    };
     Loader.prototype.load = function (force) {
         var _this = this;
         if (force === void 0) { force = false; }
@@ -124,29 +148,10 @@ var Loader = (function () {
             }
             return p;
         }
-        function executeCalls(calls, type, data) {
-            calls.forEach(function (call) {
-                var fn = call[type];
-                try {
-                    fn(data);
-                }
-                catch (e) {
-                    console.error(e);
-                }
-            });
-            calls.length = 0;
-        }
         this._load().then(function (result) {
-            var req = RequestCache[url];
-            req.data = result;
-            req.status = 1;
-            executeCalls(req.calls, 'resolve', result);
+            Loader.executeCalls(_this, 'resolve', result);
         }, function (e) {
-            var req = RequestCache[url];
-            req.data = e;
-            req.status = 2;
-            console.error(e);
-            executeCalls(req.calls, 'reject', e);
+            Loader.executeCalls(this, 'reject', e);
         });
         if (typeof this.option.timeout === 'number') {
             setTimeout(function () {
@@ -208,7 +213,7 @@ var ResourceUrl = (function () {
             url = '';
         }
         urlDom.href = url;
-        if (url.startsWith('/')) {
+        if (url.match('/^\//')) {
             return urlDom.href;
         }
         if (urlDom.href === url || urlDom.href === url + '/') {
@@ -296,16 +301,19 @@ var CssLoader = (function (_super) {
     CssLoader.prototype.checkUseCssLoadPatch = function () {
         var _this = this;
         var el = this.el;
+        if (!el) {
+            return;
+        }
         var startTime = (new Date()).getTime();
         var timeout = this.option.timeout;
         if (this.isUseCssLoadPatch()) {
             var checkLoad = function () {
                 if (timeout && (new Date()).getTime() - startTime > timeout) {
-                    el.onerror(_this.initTimeoutEvent());
+                    Loader.executeCalls(_this, 'reject', _this.createLoadEvent('timeout'));
                     return;
                 }
                 if (el.sheet) {
-                    el.onload(_this.createLoadEvent('success'));
+                    Loader.executeCalls(_this, 'resolve', _this.createLoadEvent('success'));
                 }
                 else {
                     setTimeout(checkLoad, 20);

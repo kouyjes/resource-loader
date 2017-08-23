@@ -83,7 +83,29 @@ abstract class Loader {
             target:this.el
         };
     }
+    static executeCalls(loader:Loader,type:String,data){
+        var req = RequestCache[loader.finalURL()];
+        if(!req){
+            return;
+        }
+        req.data = data;
+        if(type === 'resolve'){
+            req.status = 1;
+        }else if(type === 'reject'){
+            req.status = 2;
+            console.error(data);
+        }
+        req.calls.forEach(function (call) {
+            var fn = call[type];
+            try{
+                fn(data)
+            }catch(e){
+                console.error(e);
+            }
+        });
+        req.calls.length = 0;
 
+    }
     load(force = false):Promise{
 
         if(force){
@@ -119,31 +141,12 @@ abstract class Loader {
             }else{
                 request.calls.push(call);
             }
-
             return p;
         }
-        function executeCalls(calls:any[],type:String,data){
-            calls.forEach(function (call) {
-                var fn = call[type];
-                try{
-                    fn(data)
-                }catch(e){
-                    console.error(e);
-                }
-            });
-            calls.length = 0;
-        }
-        this._load().then(function (result) {
-            var req = RequestCache[url];
-            req.data = result;
-            req.status = 1;
-            executeCalls(req.calls,'resolve',result);
+        this._load().then((result) => {
+            Loader.executeCalls(this,'resolve',result);
         }, function (e) {
-            var req = RequestCache[url];
-            req.data = e;
-            req.status = 2;
-            console.error(e);
-            executeCalls(req.calls,'reject',e);
+            Loader.executeCalls(this,'reject',e);
         });
 
         if(typeof this.option.timeout === 'number'){

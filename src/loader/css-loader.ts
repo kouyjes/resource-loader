@@ -1,4 +1,4 @@
-import { Loader,LoaderOption,LoaderState } from './loader';
+import { Loader,LoaderOption } from './loader';
 import { ResourceUrl } from '../loader/url-parser';
 class CssLoader extends Loader {
     protected isExistEl(){
@@ -43,16 +43,19 @@ class CssLoader extends Loader {
     }
     private checkUseCssLoadPatch(){
         var el = this.el;
+        if(!el){
+            return;
+        }
         var startTime = (new Date()).getTime();
         var timeout = this.option.timeout;
         if(this.isUseCssLoadPatch()){
             var checkLoad = () => {
                 if(timeout && (new Date()).getTime() - startTime > timeout){
-                    el.onerror(this.initTimeoutEvent());
+                    Loader.executeCalls(this,'reject',this.createLoadEvent('timeout'));
                     return;
                 }
                 if(el.sheet){
-                    el.onload(this.createLoadEvent('success'));
+                    Loader.executeCalls(this,'resolve',this.createLoadEvent('success'));
                 }else{
                     setTimeout(checkLoad ,20);
                 }

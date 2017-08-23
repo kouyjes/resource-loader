@@ -8,7 +8,7 @@ class ResourceUrl{
             url = '';
         }
         urlDom.href = url;
-        if(url.startsWith('/')){
+        if(url.match('/^\//')){
             return urlDom.href;
         }
         if(urlDom.href === url || urlDom.href === url + '/'){

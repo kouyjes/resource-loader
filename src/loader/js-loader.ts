@@ -1,4 +1,4 @@
-import { Loader,LoaderOption,LoaderState } from './loader';
+import { Loader,LoaderOption } from './loader';
 import { ResourceUrl } from '../loader/url-parser';
 
 class JsLoader extends Loader {
