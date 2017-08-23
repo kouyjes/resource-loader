@@ -26,7 +26,8 @@ var nextId = (function () {
  * base abstract class loader
  */
 const RequestCache = {};
-class Loader {
+abstract class Loader {
+    static GlobalParam = {};
     protected option:LoaderOption = {
         url:''
     };
@@ -40,16 +41,26 @@ class Loader {
     protected appendToDom() {
         document.head.appendChild(this.el);
     }
-    protected isExistEl();
+    protected isExistEl(){};
     protected createDom(){}
     finalURL(){
         var url = this.option.url;
-        var params = this.option.params;
-        if(!params){
-            return url;
+        var params = Loader.GlobalParam || {};
+        var userParams = this.option.params;
+        if(!userParams){
+            Object.assign(params,userParams);
         }
         var queryArray= Array<String>();
-        Object.keys(params).forEach(function (name) {
+        var keys = Object.keys(params);
+        keys.sort(function (v1,v2) {
+            if(v1 > v2){
+                return 1;
+            }else if(v1 < v2){
+                return -1;
+            }
+            return 0;
+        });
+        keys.forEach(function (name) {
             var value = params[name];
             if(value){
                 queryArray.push(name + '=' + value);
@@ -81,7 +92,7 @@ class Loader {
         var url = this.finalURL();
         var request = RequestCache[url];
 
-        var resolve,reject;
+        var resolve = null,reject = null;
         var p = new Promise(function (_resolve, _reject) {
             resolve = _resolve;
             reject = _reject;
@@ -96,7 +107,7 @@ class Loader {
                 resolve(this.createLoadEvent('success'));
                 return p;
             }
-            request = RequestCache[url] = {
+            RequestCache[url] = {
                 status:0,
                 calls:[call]
             };
@@ -111,34 +122,28 @@ class Loader {
 
             return p;
         }
-
-        this._load().then(function (result) {
-            var req = RequestCache[url];
-            req.data = result;
-            req.status = 1;
-            req.calls.forEach(function (call) {
-                var resolve = call.resolve;
+        function executeCalls(calls:any[],type:String,data){
+            calls.forEach(function (call) {
+                var fn = call[type];
                 try{
-                    resolve(result)
+                    fn(data)
                 }catch(e){
                     console.error(e);
                 }
             });
-            req.calls.length = 0;
+            calls.length = 0;
+        }
+        this._load().then(function (result) {
+            var req = RequestCache[url];
+            req.data = result;
+            req.status = 1;
+            executeCalls(req.calls,'resolve',result);
         }, function (e) {
             var req = RequestCache[url];
             req.data = e;
             req.status = 2;
             console.error(e);
-            req.calls.forEach(function (call) {
-                var reject = call.reject;
-                try{
-                    reject(e);
-                }catch(err){
-                    console.error(err);
-                }
-            });
-            req.calls.length = 0;
+            executeCalls(req.calls,'reject',e);
         });
 
         if(typeof this.option.timeout === 'number'){
@@ -191,4 +196,4 @@ class Loader {
     }
 }
 
-export { Loader,LoaderOption,LoaderState }
+export { Loader,LoaderOption }

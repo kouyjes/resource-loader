@@ -40,15 +40,28 @@ var Loader = (function () {
     Loader.prototype.appendToDom = function () {
         document.head.appendChild(this.el);
     };
+    Loader.prototype.isExistEl = function () { };
+    
     Loader.prototype.createDom = function () { };
     Loader.prototype.finalURL = function () {
         var url = this.option.url;
-        var params = this.option.params;
-        if (!params) {
-            return url;
+        var params = Loader.GlobalParam || {};
+        var userParams = this.option.params;
+        if (!userParams) {
+            Object.assign(params, userParams);
         }
         var queryArray = Array();
-        Object.keys(params).forEach(function (name) {
+        var keys = Object.keys(params);
+        keys.sort(function (v1, v2) {
+            if (v1 > v2) {
+                return 1;
+            }
+            else if (v1 < v2) {
+                return -1;
+            }
+            return 0;
+        });
+        keys.forEach(function (name) {
             var value = params[name];
             if (value) {
                 queryArray.push(name + '=' + value);
@@ -80,7 +93,7 @@ var Loader = (function () {
         }
         var url = this.finalURL();
         var request = RequestCache[url];
-        var resolve, reject;
+        var resolve = null, reject = null;
         var p = new Promise(function (_resolve, _reject) {
             resolve = _resolve;
             reject = _reject;
@@ -94,7 +107,7 @@ var Loader = (function () {
                 resolve(this.createLoadEvent('success'));
                 return p;
             }
-            request = RequestCache[url] = {
+            RequestCache[url] = {
                 status: 0,
                 calls: [call]
             };
@@ -111,35 +124,29 @@ var Loader = (function () {
             }
             return p;
         }
-        this._load().then(function (result) {
-            var req = RequestCache[url];
-            req.data = result;
-            req.status = 1;
-            req.calls.forEach(function (call) {
-                var resolve = call.resolve;
+        function executeCalls(calls, type, data) {
+            calls.forEach(function (call) {
+                var fn = call[type];
                 try {
-                    resolve(result);
+                    fn(data);
                 }
                 catch (e) {
                     console.error(e);
                 }
             });
-            req.calls.length = 0;
+            calls.length = 0;
+        }
+        this._load().then(function (result) {
+            var req = RequestCache[url];
+            req.data = result;
+            req.status = 1;
+            executeCalls(req.calls, 'resolve', result);
         }, function (e) {
             var req = RequestCache[url];
             req.data = e;
             req.status = 2;
             console.error(e);
-            req.calls.forEach(function (call) {
-                var reject = call.reject;
-                try {
-                    reject(e);
-                }
-                catch (err) {
-                    console.error(err);
-                }
-            });
-            req.calls.length = 0;
+            executeCalls(req.calls, 'reject', e);
         });
         if (typeof this.option.timeout === 'number') {
             setTimeout(function () {
@@ -185,6 +192,7 @@ var Loader = (function () {
         this.appendToDom();
         return promise;
     };
+    Loader.GlobalParam = {};
     return Loader;
 }());
 
