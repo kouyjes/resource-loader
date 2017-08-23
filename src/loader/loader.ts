@@ -47,7 +47,7 @@ abstract class Loader {
         var url = this.option.url;
         var params = Loader.GlobalParam || {};
         var userParams = this.option.params;
-        if(!userParams){
+        if(userParams){
             Object.assign(params,userParams);
         }
         var queryArray= Array<String>();
