@@ -188,7 +188,7 @@ var Loader = (function () {
             if (stateText && !/^c|loade/.test(stateText))
                 return;
             onLoadFn(_this.createLoadEvent('success'));
-            if (Loader.ENV_MODE === LoaderEnvModel.PRODUCT) {
+            if (/script/.test(el.tagName) && Loader.ENV_MODE === LoaderEnvModel.PRODUCT) {
                 if (el.parentNode) {
                     el.parentNode.removeChild(el);
                 }

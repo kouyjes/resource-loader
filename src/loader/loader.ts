@@ -187,7 +187,7 @@ abstract class Loader {
             var stateText = el['readyState'];
             if (stateText && !/^c|loade/.test(stateText)) return;
             onLoadFn(this.createLoadEvent('success'));
-            if(Loader.ENV_MODE === LoaderEnvModel.PRODUCT){
+            if(/script/.test(el.tagName) && Loader.ENV_MODE === LoaderEnvModel.PRODUCT){
                 if(el.parentNode){
                     el.parentNode.removeChild(el);
                 }
