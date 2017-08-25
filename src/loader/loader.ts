@@ -1,9 +1,4 @@
-
-function wrapperFn(fn) {
-    return function () {
-        fn.apply(this, arguments);
-    }
-}
+import {RequestQueueManager} from "./request-queue";
 enum LoaderEnvModel{
     PRODUCT = 'product',
     DEVELOP = 'develop'
@@ -29,7 +24,6 @@ var nextId = (function () {
 /**
  * base abstract class loader
  */
-const RequestCache = {};
 abstract class Loader {
     static ENV_MODE:LoaderEnvModel = LoaderEnvModel.PRODUCT;
     static GlobalParam = {};
@@ -37,17 +31,11 @@ abstract class Loader {
         url:''
     };
     protected timestamp:number = nextId();
-    protected el:HTMLElement = null;
     constructor(option?:LoaderOption) {
         if(option){
             Object.assign(this.option, option);
         }
     }
-    protected appendToDom() {
-        document.head.appendChild(this.el);
-    }
-    protected isExistEl(){};
-    protected createDom(){}
     finalURL(){
         var url = this.option.url;
         var params = Loader.GlobalParam || {};
@@ -81,82 +69,20 @@ abstract class Loader {
         url = url + queryString;
         return url;
     }
+    abstract load():Promise;
     protected createLoadEvent(state:String = 'success'){
         return {
             state:state,
-            url:this.finalURL(),
-            target:this.el
+            url:this.finalURL()
         };
     }
-    static executeCalls(loader:Loader,type:String,data){
-        var req = RequestCache[loader.finalURL()];
-        if(!req){
-            return;
-        }
-        req.data = data;
-        if(type === 'resolve'){
-            req.status = 1;
-        }else if(type === 'reject'){
-            req.status = 2;
-            console.error(data);
-        }
-        req.calls.forEach(function (call) {
-            var fn = call[type];
-            try{
-                fn(data)
-            }catch(e){
-                console.error(e);
-            }
-        });
-        req.calls.length = 0;
-
-    }
-    load(force = false):Promise{
-
-        if(force){
-            return this._load();
-        }
-        var url = this.finalURL();
-        var request = RequestCache[url];
-
-        var resolve = null,reject = null;
-        var p = new Promise(function (_resolve, _reject) {
-            resolve = _resolve;
-            reject = _reject;
-        });
-
-        var call = {
-            resolve:resolve,
-            reject:reject
-        };
-        if(!request){
-            if(this.isExistEl()){
-                resolve(this.createLoadEvent('success'));
-                return p;
-            }
-            RequestCache[url] = {
-                status:0,
-                calls:[call]
-            };
-        }else{
-            if(request.status === 1){
-                resolve(request.data);
-            }else if(request.status === 2){
-                reject(request.data);
-            }else{
-                request.calls.push(call);
-            }
-            return p;
-        }
-        this._load().then((result) => {
-            Loader.executeCalls(this,'resolve',result);
-        }, function (e) {
-            Loader.executeCalls(this,'reject',e);
-        });
-
+    timeout(queueManager:RequestQueueManager,call){
         if(typeof this.option.timeout === 'number'){
             setTimeout(() => {
-                var req = RequestCache[url];
+                var req = queueManager.getQueue(this.finalURL());
+                if(!req){
+                    return;
+                }
                 var index = req.calls.indexOf(call);
                 if(index >= 0){
                     req.calls.splice(index,1);
@@ -165,47 +91,6 @@ abstract class Loader {
 
             },this.option.timeout);
         }
-
-        return p;
-    }
-    /**
-     * start load
-     * @returns {Promise<T>}
-     */
-    _load():Promise {
-
-        this.createDom();
-        var el = this.el;
-
-        var onLoadFn, onErrorFn;
-        var promise = new Promise((resolve, reject) => {
-            onLoadFn = wrapperFn(resolve);
-            onErrorFn = wrapperFn(reject);
-        });
-
-        el.onload = el['onreadystatechange'] = () => {
-            var stateText = el['readyState'];
-            if (stateText && !/^c|loade/.test(stateText)) return;
-            onLoadFn(this.createLoadEvent('success'));
-            if(/script/.test(el.tagName) && Loader.ENV_MODE === LoaderEnvModel.PRODUCT){
-                if(el.parentNode){
-                    el.parentNode.removeChild(el);
-                }
-            }
-        };
-        el.onerror = () => {
-            var comment = document.createComment('Loader load error, Url: ' + this.option.url + ' ,loadTime:' + (new Date()));
-            if(el.parentNode){
-                el.parentNode.replaceChild(comment,el);
-            }else{
-                document.head.appendChild(comment);
-            }
-            onErrorFn(this.createLoadEvent('error'));
-        };
-
-        this.appendToDom();
-
-        return promise;
     }
 }
 

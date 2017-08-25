@@ -11,11 +11,6 @@ function __extends(d, b) {
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 }
 
-function wrapperFn(fn) {
-    return function () {
-        fn.apply(this, arguments);
-    };
-}
 var LoaderEnvModel;
 (function (LoaderEnvModel) {
     LoaderEnvModel[LoaderEnvModel["PRODUCT"] = 'product'] = "PRODUCT";
@@ -30,24 +25,16 @@ var nextId = (function () {
 /**
  * base abstract class loader
  */
-var RequestCache = {};
 var Loader = (function () {
     function Loader(option) {
         this.option = {
             url: ''
         };
         this.timestamp = nextId();
-        this.el = null;
         if (option) {
             Object.assign(this.option, option);
         }
     }
-    Loader.prototype.appendToDom = function () {
-        document.head.appendChild(this.el);
-    };
-    Loader.prototype.isExistEl = function () { };
-    
-    Loader.prototype.createDom = function () { };
     Loader.prototype.finalURL = function () {
         var url = this.option.url;
         var params = Loader.GlobalParam || {};
@@ -86,81 +73,17 @@ var Loader = (function () {
         if (state === void 0) { state = 'success'; }
         return {
             state: state,
-            url: this.finalURL(),
-            target: this.el
+            url: this.finalURL()
         };
     };
-    Loader.executeCalls = function (loader, type, data) {
-        var req = RequestCache[loader.finalURL()];
-        if (!req) {
-            return;
-        }
-        req.data = data;
-        if (type === 'resolve') {
-            req.status = 1;
-        }
-        else if (type === 'reject') {
-            req.status = 2;
-            console.error(data);
-        }
-        req.calls.forEach(function (call) {
-            var fn = call[type];
-            try {
-                fn(data);
-            }
-            catch (e) {
-                console.error(e);
-            }
-        });
-        req.calls.length = 0;
-    };
-    Loader.prototype.load = function (force) {
+    Loader.prototype.timeout = function (queueManager, call) {
         var _this = this;
-        if (force === void 0) { force = false; }
-        if (force) {
-            return this._load();
-        }
-        var url = this.finalURL();
-        var request = RequestCache[url];
-        var resolve = null, reject = null;
-        var p = new Promise(function (_resolve, _reject) {
-            resolve = _resolve;
-            reject = _reject;
-        });
-        var call = {
-            resolve: resolve,
-            reject: reject
-        };
-        if (!request) {
-            if (this.isExistEl()) {
-                resolve(this.createLoadEvent('success'));
-                return p;
-            }
-            RequestCache[url] = {
-                status: 0,
-                calls: [call]
-            };
-        }
-        else {
-            if (request.status === 1) {
-                resolve(request.data);
-            }
-            else if (request.status === 2) {
-                reject(request.data);
-            }
-            else {
-                request.calls.push(call);
-            }
-            return p;
-        }
-        this._load().then(function (result) {
-            Loader.executeCalls(_this, 'resolve', result);
-        }, function (e) {
-            Loader.executeCalls(this, 'reject', e);
-        });
         if (typeof this.option.timeout === 'number') {
             setTimeout(function () {
-                var req = RequestCache[url];
+                var req = queueManager.getQueue(_this.finalURL());
+                if (!req) {
+                    return;
+                }
                 var index = req.calls.indexOf(call);
                 if (index >= 0) {
                     req.calls.splice(index, 1);
@@ -168,44 +91,6 @@ var Loader = (function () {
                 }
             }, this.option.timeout);
         }
-        return p;
-    };
-    /**
-     * start load
-     * @returns {Promise<T>}
-     */
-    Loader.prototype._load = function () {
-        var _this = this;
-        this.createDom();
-        var el = this.el;
-        var onLoadFn, onErrorFn;
-        var promise = new Promise(function (resolve, reject) {
-            onLoadFn = wrapperFn(resolve);
-            onErrorFn = wrapperFn(reject);
-        });
-        el.onload = el['onreadystatechange'] = function () {
-            var stateText = el['readyState'];
-            if (stateText && !/^c|loade/.test(stateText))
-                return;
-            onLoadFn(_this.createLoadEvent('success'));
-            if (/script/.test(el.tagName) && Loader.ENV_MODE === LoaderEnvModel.PRODUCT) {
-                if (el.parentNode) {
-                    el.parentNode.removeChild(el);
-                }
-            }
-        };
-        el.onerror = function () {
-            var comment = document.createComment('Loader load error, Url: ' + _this.option.url + ' ,loadTime:' + (new Date()));
-            if (el.parentNode) {
-                el.parentNode.replaceChild(comment, el);
-            }
-            else {
-                document.head.appendChild(comment);
-            }
-            onErrorFn(_this.createLoadEvent('error'));
-        };
-        this.appendToDom();
-        return promise;
     };
     Loader.ENV_MODE = LoaderEnvModel.PRODUCT;
     Loader.GlobalParam = {};
@@ -239,6 +124,134 @@ var ResourceUrl = (function () {
     return ResourceUrl;
 }());
 
+var RequestQueueManager = (function () {
+    function RequestQueueManager() {
+        Object.defineProperty(this, 'requestQueues', {
+            value: {}
+        });
+    }
+    RequestQueueManager.prototype.executeQueue = function (key, type, data) {
+        var request = this.requestQueues[key];
+        if (!request) {
+            return;
+        }
+        request.execute(type, data);
+    };
+    RequestQueueManager.prototype.putQueue = function (key, request) {
+        this.requestQueues[key] = request;
+    };
+    RequestQueueManager.prototype.getQueue = function (key) {
+        return this.requestQueues[key] || null;
+    };
+    RequestQueueManager.prototype.removeQueue = function (key) {
+        var queue = this.requestQueues[key];
+        delete this.requestQueues[key];
+        return queue;
+    };
+    return RequestQueueManager;
+}());
+var RequestQueue = (function () {
+    function RequestQueue(option) {
+        if (option === void 0) { option = {}; }
+        this.status = 0;
+        this.data = null;
+        this.calls = [];
+        if (option.status) {
+            this.status = option.status;
+        }
+        if (option.data) {
+            this.data = option.data;
+        }
+        if (option.calls) {
+            this.calls = option.calls;
+        }
+    }
+    RequestQueue.prototype.execute = function (type, data) {
+        this.data = data;
+        if (type === 'resolve') {
+            this.status = 1;
+        }
+        else if (type === 'reject') {
+            this.status = 2;
+            console.error(data);
+        }
+        this.calls.forEach(function (call) {
+            var fn = call[type];
+            try {
+                fn(data);
+            }
+            catch (e) {
+                console.error(e);
+            }
+        });
+        this.calls.length = 0;
+    };
+    return RequestQueue;
+}());
+
+function wrapperFn(fn) {
+    return function () {
+        fn.apply(this, arguments);
+    };
+}
+/**
+ * base abstract class loader
+ */
+var ElementLoader = (function (_super) {
+    __extends(ElementLoader, _super);
+    function ElementLoader(option) {
+        _super.call(this, option);
+        this.el = null;
+    }
+    ElementLoader.prototype.isExistEl = function () {
+        return false;
+    };
+    
+    ElementLoader.prototype.createLoadEvent = function (state) {
+        if (state === void 0) { state = 'success'; }
+        return {
+            state: state,
+            url: this.finalURL(),
+            target: this.el
+        };
+    };
+    ElementLoader.prototype.load = function () {
+        return this._load();
+    };
+    /**
+     * start load
+     * @returns {Promise<T>}
+     */
+    ElementLoader.prototype._load = function () {
+        var _this = this;
+        this.createDom();
+        var el = this.el;
+        var onLoadFn, onErrorFn;
+        var promise = new Promise(function (resolve, reject) {
+            onLoadFn = wrapperFn(resolve);
+            onErrorFn = wrapperFn(reject);
+        });
+        el.onload = el['onreadystatechange'] = function () {
+            var stateText = el['readyState'];
+            if (stateText && !/^c|loade/.test(stateText))
+                return;
+            onLoadFn(_this.createLoadEvent('success'));
+            el.onload = el['onreadystatechange'] = null;
+        };
+        el.onerror = function () {
+            var comment = document.createComment('Loader load error, Url: ' + _this.option.url + ' ,loadTime:' + (new Date()));
+            if (el.parentNode) {
+                el.parentNode.replaceChild(comment, el);
+            }
+            onErrorFn(_this.createLoadEvent('error'));
+        };
+        this.appendToDom(el);
+        return promise;
+    };
+    return ElementLoader;
+}(Loader));
+
+var jsQueueManager = new RequestQueueManager();
 var JsLoader = (function (_super) {
     __extends(JsLoader, _super);
     function JsLoader() {
@@ -258,13 +271,75 @@ var JsLoader = (function (_super) {
             }
         });
     };
+    JsLoader.prototype.appendToDom = function (el) {
+        document.head.appendChild(el);
+    };
     JsLoader.prototype.createDom = function () {
         this.el = document.createElement('script');
         this.el.src = this.finalURL();
     };
+    JsLoader.prototype.load = function (force) {
+        if (force === void 0) { force = false; }
+        if (force) {
+            return this._load();
+        }
+        var url = this.finalURL();
+        var request = jsQueueManager.getQueue(url);
+        var resolve = null, reject = null;
+        var call = {
+            resolve: resolve,
+            reject: reject
+        };
+        var p = new Promise(function (_resolve, _reject) {
+            call.resolve = resolve = _resolve;
+            call.reject = reject = _reject;
+        });
+        if (!request) {
+            if (this.isExistEl()) {
+                resolve(this.createLoadEvent('success'));
+                return p;
+            }
+            request = new RequestQueue({
+                calls: [call]
+            });
+            jsQueueManager.putQueue(url, request);
+        }
+        else {
+            if (request.status === 1) {
+                resolve(request.data);
+            }
+            else if (request.status === 2) {
+                reject(request.data);
+            }
+            else {
+                request.calls.push(call);
+            }
+            return p;
+        }
+        this._load().then(function (result) {
+            jsQueueManager.executeQueue(url, 'resolve', result);
+        }, function (e) {
+            jsQueueManager.executeQueue(url, 'reject', e);
+        });
+        this.timeout(jsQueueManager, call);
+        return p;
+    };
+    JsLoader.prototype._load = function () {
+        var el = this.el;
+        if (el) {
+            return _super.prototype._load.call(this);
+        }
+        return _super.prototype._load.call(this).then(function (d) {
+            if (el) {
+                el.parentNode.removeChild(el);
+            }
+            return d;
+        });
+    };
     return JsLoader;
-}(Loader));
+}(ElementLoader));
 
+var cssQueueManager = new RequestQueueManager();
 var CssLoader = (function (_super) {
     __extends(CssLoader, _super);
     function CssLoader() {
@@ -283,6 +358,9 @@ var CssLoader = (function (_super) {
                 return true;
             }
         });
+    };
+    CssLoader.prototype.appendToDom = function (el) {
+        document.head.appendChild(el);
     };
     CssLoader.prototype.createDom = function () {
         this.el = document.createElement('link');
@@ -320,11 +398,11 @@ var CssLoader = (function (_super) {
         if (this.isUseCssLoadPatch()) {
             var checkLoad = function () {
                 if (timeout && (new Date()).getTime() - startTime > timeout) {
-                    Loader.executeCalls(_this, 'reject', _this.createLoadEvent('timeout'));
+                    cssQueueManager.executeQueue(_this.finalURL(), 'reject', _this.createLoadEvent('timeout'));
                     return;
                 }
                 if (el.sheet) {
-                    Loader.executeCalls(_this, 'resolve', _this.createLoadEvent('success'));
+                    cssQueueManager.executeQueue(_this.finalURL(), 'resolve', _this.createLoadEvent('success'));
                 }
                 else {
                     setTimeout(checkLoad, 20);
@@ -338,8 +416,65 @@ var CssLoader = (function (_super) {
         this.checkUseCssLoadPatch();
         return result;
     };
+    CssLoader.prototype.load = function (force) {
+        var _this = this;
+        if (force === void 0) { force = false; }
+        if (force) {
+            return this._load();
+        }
+        var url = this.finalURL();
+        var request = cssQueueManager.getQueue(url);
+        var resolve = null, reject = null;
+        var call = {
+            resolve: resolve,
+            reject: reject
+        };
+        var p = new Promise(function (_resolve, _reject) {
+            call.resolve = resolve = _resolve;
+            call.reject = reject = _reject;
+        });
+        var isExistEl = this.isExistEl();
+        if (isExistEl) {
+            if (request) {
+                if (request.status === 1) {
+                    resolve(request.data);
+                }
+                else if (request.status === 2) {
+                    reject(request.data);
+                }
+                else {
+                    request.calls.push(call);
+                }
+            }
+            else {
+                resolve(this.createLoadEvent('success'));
+            }
+            return p;
+        }
+        else {
+            if (!request) {
+                request = new RequestQueue();
+                cssQueueManager.putQueue(url, request);
+            }
+            else {
+                request.status = 0;
+            }
+            request.calls.push(call);
+        }
+        this._load().then(function (result) {
+            if (_this.isExistEl()) {
+                cssQueueManager.executeQueue(url, 'resolve', result);
+            }
+        }, function (e) {
+            if (_this.isExistEl()) {
+                cssQueueManager.executeQueue(url, 'reject', e);
+            }
+        });
+        this.timeout(cssQueueManager, call);
+        return p;
+    };
     return CssLoader;
-}(Loader));
+}(ElementLoader));
 
 function polyfill() {
     if (!Object.assign) {
@@ -355,13 +490,118 @@ function polyfill() {
     }
 }
 
+var textQueueManager = new RequestQueueManager();
+var TextLoader = (function (_super) {
+    __extends(TextLoader, _super);
+    function TextLoader() {
+        _super.apply(this, arguments);
+    }
+    TextLoader.prototype.load = function () {
+        var resolve = null, reject = null;
+        var call = {
+            resolve: null,
+            reject: null
+        };
+        var promise = new Promise(function (_resolve, _reject) {
+            call.resolve = resolve = _resolve;
+            call.reject = reject = _reject;
+        });
+        var url = this.finalURL();
+        var request = textQueueManager.getQueue(url);
+        if (!request) {
+            request = new RequestQueue({
+                calls: [call]
+            });
+            textQueueManager.putQueue(url, request);
+        }
+        else {
+            if (request.status === 0) {
+                request.calls.push(call);
+                return promise;
+            }
+        }
+        this._load().then(function (result) {
+            textQueueManager.executeQueue(url, 'resolve', result);
+            textQueueManager.removeQueue(url);
+        }, function (e) {
+            textQueueManager.executeQueue(url, 'reject', e);
+            textQueueManager.removeQueue(url);
+        });
+        this.timeout(textQueueManager, call);
+        return promise;
+    };
+    TextLoader.prototype._load = function () {
+        var _this = this;
+        var url = this.finalURL();
+        var resolve, reject;
+        var promise = new Promise(function (_resolve, _reject) {
+            resolve = _resolve;
+            reject = _reject;
+        });
+        var xhr = new XMLHttpRequest();
+        try {
+            xhr.open('GET', url, true);
+            xhr['onreadystatechange'] = function () {
+                if (xhr.readyState !== 4) {
+                    return;
+                }
+                var status = xhr.status;
+                var isSuccess = status >= 200 && status < 300 || status === 304;
+                if (isSuccess) {
+                    resolve(xhr.responseText);
+                }
+                else {
+                    reject(_this.createLoadEvent('error'));
+                }
+            };
+            xhr.send();
+        }
+        catch (e) {
+            console.error(e);
+            reject && reject(this.createLoadEvent('error'));
+        }
+        return promise;
+    };
+    return TextLoader;
+}(Loader));
+
+var JsonLoader = (function (_super) {
+    __extends(JsonLoader, _super);
+    function JsonLoader(option) {
+        _super.call(this, option);
+    }
+    JsonLoader.prototype.load = function () {
+        return _super.prototype.load.call(this).then(function (data) {
+            return JSON.parse(data);
+        });
+    };
+    return JsonLoader;
+}(TextLoader));
+
+var ImageLoader = (function (_super) {
+    __extends(ImageLoader, _super);
+    function ImageLoader(option) {
+        _super.call(this, option);
+    }
+    ImageLoader.prototype.appendToDom = function (el) {
+    };
+    ImageLoader.prototype.createDom = function () {
+        this.el = document.createElement('img');
+        this.el.src = this.finalURL();
+    };
+    return ImageLoader;
+}(ElementLoader));
+
 polyfill();
 function isFunction(fn) {
     return typeof fn === 'function';
 }
 var loaders = {
     js: JsLoader,
-    css: CssLoader
+    css: CssLoader,
+    text: TextLoader,
+    json: JsonLoader,
+    image: ImageLoader
 };
 loaders = Object.create(loaders);
 var LoaderEvent;

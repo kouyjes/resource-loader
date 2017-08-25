@@ -35,6 +35,21 @@
             //timeout:1000,
             urls:['http://localhost:8080/app/common-comp/component/iframe.comp.css','http://localhost:8080/index.css']
         };
+
+        var textResource = {
+            type:'text',
+            urls:['http://localhost:8080']
+        };
+
+        var jsonResource = {
+            type:'json',
+            urls:['http://localhost:8080/env/applications.json']
+        };
+
+        var imageResource = {
+            type:'image',
+            urls:['http://localhost:8080/env/applications.json','http://localhost:8080/002.jpg']
+        };
        /* HERE.ResourceLoader.addEventListener('loadStart', function (target) {
             console.log('loadStart ....');
             console.log(target);
@@ -47,7 +62,7 @@
             for(var i = 0;i < 1;i++){
                 (function(){
                     var index = i;
-                    loader.load([cssResource,jsResource]).then(function () {
+                    loader.load([jsonResource,textResource,imageResource],[cssResource,jsResource]).then(function () {
                         console.log('loaded finish ! :' + index);
                         console.log(arguments);
                     },function(e){

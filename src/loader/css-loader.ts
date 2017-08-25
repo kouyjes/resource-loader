@@ -1,6 +1,9 @@
 import { Loader,LoaderOption } from './loader';
 import { ResourceUrl } from '../loader/url-parser';
-class CssLoader extends Loader {
+import { RequestQueue,RequestQueueManager } from './request-queue';
+import {ElementLoader} from "./element-loader";
+const cssQueueManager = new RequestQueueManager();
+class CssLoader extends ElementLoader {
     protected isExistEl(){
         var url = this.finalURL();
         var links = Array.prototype.slice.call(document.getElementsByTagName('link'),0);
@@ -17,6 +20,9 @@ class CssLoader extends Loader {
             }
         });
 
+    }
+    protected appendToDom(el) {
+        document.head.appendChild(el);
     }
     protected createDom(){
         this.el = document.createElement('link');
@@ -51,11 +57,11 @@ class CssLoader extends Loader {
         if(this.isUseCssLoadPatch()){
             var checkLoad = () => {
                 if(timeout && (new Date()).getTime() - startTime > timeout){
-                    Loader.executeCalls(this,'reject',this.createLoadEvent('timeout'));
+                    cssQueueManager.executeQueue(this.finalURL(),'reject',this.createLoadEvent('timeout'));
                     return;
                 }
                 if(el.sheet){
-                    Loader.executeCalls(this,'resolve',this.createLoadEvent('success'));
+                    cssQueueManager.executeQueue(this.finalURL(),'resolve',this.createLoadEvent('success'));
                 }else{
                     setTimeout(checkLoad ,20);
                 }
@@ -68,6 +74,61 @@ class CssLoader extends Loader {
         var result = super.load();
         this.checkUseCssLoadPatch();
         return result;
+    }
+    load(force = false):Promise{
+
+        if(force){
+            return this._load();
+        }
+        var url = this.finalURL();
+        var request:RequestQueue = cssQueueManager.getQueue(url);
+
+        var resolve = null,reject = null;
+        var call = {
+            resolve:resolve,
+            reject:reject
+        };
+        var p = new Promise(function (_resolve, _reject) {
+            call.resolve = resolve = _resolve;
+            call.reject = reject = _reject;
+        });
+
+        var isExistEl = this.isExistEl();
+        if(isExistEl){
+            if(request){
+                if(request.status === 1){
+                    resolve(request.data);
+                }else if(request.status === 2){
+                    reject(request.data);
+                }else{
+                    request.calls.push(call);
+                }
+            }else{
+                resolve(this.createLoadEvent('success'));
+            }
+            return p;
+        }else{
+            if(!request){
+                request = new RequestQueue();
+                cssQueueManager.putQueue(url,request);
+            }else{
+                request.status = 0;
+            }
+            request.calls.push(call);
+        }
+        this._load().then((result) => {
+            if(this.isExistEl()){
+                cssQueueManager.executeQueue(url,'resolve',result);
+            }
+        }, (e) => {
+            if(this.isExistEl()){
+                cssQueueManager.executeQueue(url,'reject',e);
+            }
+        });
+
+        this.timeout(cssQueueManager,call);
+
+        return p;
     }
 }
 export { CssLoader }

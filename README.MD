@@ -1,6 +1,6 @@
 ## Getting Started
 ### Define Resource
-1.Resource declaration
+1. Resource declaration
 ```javascript
     interface Resource {
         type:String; // type name js|css
@@ -10,14 +10,14 @@
         timeout?:number // timeout of every url item load  | ms
     }
 ```
-2.parallel load resource urls 
+2. parallel load resource urls 
 ```javascript
     var resource = {
         type:'js',
         urls:['test/a.js']
     };
 ```
-3.serial load resource urls
+3. serial load resource urls
 ```javascript
     var resource = {
         type:'js',
@@ -25,7 +25,7 @@
         urls:['test/a.js']
     };
 ```
-4.with dependence
+4. with dependence
 ```javascript
     var resource = {
         type:'js',
@@ -37,7 +37,7 @@
     };
     // load: b.js --> a.js
 ```
-5.css resource
+5. css resource
 ```javascript
     var resource = {
         type:'css',
@@ -45,8 +45,32 @@
         urls:['test/a.css']
     };
 ```
+6. text resource
+```javascript
+    var resource = {
+        type:'text',
+        timeout:2000,
+        urls:['test/a.html']
+    };
+```
+7. json resource
+```javascript
+    var resource = {
+        type:'json',
+        timeout:2000,
+        urls:['test/a.json']
+    };    
+```
+8. image resource
+```javascript
+    var resource = {
+        type:'image',
+        timeout:2000,
+        urls:['test/a.image']
+    };       
+```
 ### start load resource
-1.Define ResourceLoader
+1. Define ResourceLoader
 ```javascript
     interface ResourceLoaderOption {
         baseURI?:String; // Define load baseURI
@@ -59,7 +83,7 @@
         timeout:8000 // timeout of all request
    });
 ```
-2.Start load Resource
+2. Start load Resource
 ```javascript
     var promise = loader.load(resource);
     promise.then(function(){
@@ -78,7 +102,7 @@
     var resourceC;
     loader.load([resourceJs,resourceCss],resourceC);
 ```
-3.Extend loader for ResourceLoader
+3. Extend loader for ResourceLoader
 ```javascript
     ResourceLoader.registerLoader(type:String,loader:Loader);
 ```
