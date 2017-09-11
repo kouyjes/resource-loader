@@ -1,6 +1,6 @@
 {
   "name": "dom-resource-loader",
-  "version": "1.0.24",
+  "version": "1.0.25",
   "description": "js css loader",
   "main": "index.js",
   "directories": {

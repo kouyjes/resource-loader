@@ -102,16 +102,17 @@ var ResourceUrl = (function () {
     function ResourceUrl() {
     }
     ResourceUrl.parseUrl = function (baseURI, url) {
-        if (!baseURI) {
-            baseURI = '';
-        }
         if (!url) {
             url = '';
         }
         urlDom.href = url;
+        if (!baseURI) {
+            return urlDom.href;
+        }
         if (url.match('/^\//')) {
             return urlDom.href;
         }
+        urlDom.href = url;
         if (urlDom.href === url || urlDom.href === url + '/') {
             return url;
         }
@@ -259,6 +260,7 @@ var JsLoader = (function (_super) {
     }
     JsLoader.prototype.isExistEl = function () {
         var url = this.finalURL();
+        url = ResourceUrl.parseUrl('', url);
         var scripts = Array.prototype.slice.call(document.getElementsByTagName('script'), 0);
         return scripts.some(function (scr) {
             var src = scr.src;
@@ -347,6 +349,7 @@ var CssLoader = (function (_super) {
     }
     CssLoader.prototype.isExistEl = function () {
         var url = this.finalURL();
+        url = ResourceUrl.parseUrl('', url);
         var links = Array.prototype.slice.call(document.getElementsByTagName('link'), 0);
         return links.some(function (lnk) {
             var href = lnk.href;

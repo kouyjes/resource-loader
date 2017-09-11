@@ -6,6 +6,7 @@ const jsQueueManager = new RequestQueueManager();
 class JsLoader extends ElementLoader {
     protected isExistEl(){
         var url = this.finalURL();
+        url = ResourceUrl.parseUrl('',url);
         var scripts = Array.prototype.slice.call(document.getElementsByTagName('script'),0);
         return scripts.some(function (scr) {
             var src = scr.src;

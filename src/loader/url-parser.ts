@@ -1,16 +1,17 @@
 const urlDom = document.createElement('a');
 class ResourceUrl{
     static parseUrl = function(baseURI,url){
-        if(!baseURI){
-            baseURI = '';
-        }
         if(!url){
             url = '';
         }
         urlDom.href = url;
+        if(!baseURI){
+            return urlDom.href;
+        }
         if(url.match('/^\//')){
             return urlDom.href;
         }
+        urlDom.href = url;
         if(urlDom.href === url || urlDom.href === url + '/'){
             return url;
         }
