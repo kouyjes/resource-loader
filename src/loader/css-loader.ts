@@ -6,7 +6,7 @@ const cssQueueManager = new RequestQueueManager();
 class CssLoader extends ElementLoader {
     protected isExistEl(){
         var url = this.finalURL();
-        -
+        url = ResourceUrl.parseUrl('',url);
         var links = Array.prototype.slice.call(document.getElementsByTagName('link'),0);
 
         return links.some(function (lnk) {
