@@ -108,6 +108,9 @@ class ResourceLoader {
             }
             var promise = Promise.all(promises);
             other.forEach((resource) => {
+                if(!resource){
+                    return;
+                }
                 promise = promise.then(() => {
                     var _resource = Object.create(resource);
                     return loadFn(_resource);
