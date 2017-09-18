@@ -654,13 +654,15 @@ var ResourceLoader = (function () {
                 other[_i - 1] = arguments[_i];
             }
             var promises = [];
-            if (!(resource instanceof Array)) {
-                promises.push(_this._loadResource(resource, loadEvents));
-            }
-            else {
-                resource.forEach(function (resource) {
+            if (resource) {
+                if (!(resource instanceof Array)) {
                     promises.push(_this._loadResource(resource, loadEvents));
-                });
+                }
+                else {
+                    resource.forEach(function (resource) {
+                        promises.push(_this._loadResource(resource, loadEvents));
+                    });
+                }
             }
             var promise = Promise.all(promises);
             other.forEach(function (resource) {

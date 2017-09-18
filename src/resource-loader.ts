@@ -99,12 +99,14 @@ class ResourceLoader {
         var loadEvents = [];
         var loadFn = (resource:Resource|Resource[], ...other:Resource[]) => {
             var promises = [];
-            if (!(resource instanceof Array)) {
-                promises.push(this._loadResource(<Resource>resource, loadEvents));
-            } else {
-                (<Resource[]>resource).forEach((resource) => {
-                    promises.push(this._loadResource(resource, loadEvents));
-                });
+            if(resource){
+                if (!(resource instanceof Array)) {
+                    promises.push(this._loadResource(<Resource>resource, loadEvents));
+                } else {
+                    (<Resource[]>resource).forEach((resource) => {
+                        promises.push(this._loadResource(resource, loadEvents));
+                    });
+                }
             }
             var promise = Promise.all(promises);
             other.forEach((resource) => {
