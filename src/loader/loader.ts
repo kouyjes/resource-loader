@@ -94,4 +94,4 @@ abstract class Loader {
     }
 }
 
-export { Loader,LoaderOption }
+export { Loader,LoaderOption,LoaderEnvModel }

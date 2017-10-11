@@ -327,13 +327,13 @@ var JsLoader = (function (_super) {
         return p;
     };
     JsLoader.prototype._load = function () {
-        var el = this.el;
-        if (el) {
-            return _super.prototype._load.call(this);
-        }
+        var _this = this;
         return _super.prototype._load.call(this).then(function (d) {
-            if (el) {
-                el.parentNode.removeChild(el);
+            if (Loader.ENV_MODE === LoaderEnvModel.PRODUCT && _this.el) {
+                try {
+                    _this.el.parentNode.removeChild(_this.el);
+                }
+                catch (e) { }
             }
             return d;
         });

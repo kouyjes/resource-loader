@@ -2,6 +2,8 @@
 import { ResourceUrl } from '../loader/url-parser';
 import { RequestQueue,RequestQueueManager } from './request-queue';
 import {ElementLoader} from "./element-loader";
+import {Loader} from "./loader";
+import {LoaderEnvModel} from "./loader";
 const jsQueueManager = new RequestQueueManager();
 class JsLoader extends ElementLoader {
     protected isExistEl(){
@@ -74,13 +76,11 @@ class JsLoader extends ElementLoader {
         return p;
     }
     _load():Promise {
-        var el = this.el;
-        if(el){
-            return super._load();
-        }
         return super._load().then((d) => {
-            if(el){
-                el.parentNode.removeChild(el);
+            if(Loader.ENV_MODE === LoaderEnvModel.PRODUCT && this.el){
+                try{
+                    this.el.parentNode.removeChild(this.el);
+                }catch(e){}
             }
             return d;
         });
