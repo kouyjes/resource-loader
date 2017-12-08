@@ -22,7 +22,7 @@
             type:'js',
             serial:true,
             //timeout:1000,
-            urls:['test/js/a.js','http://localhost:8080/node_modules/injector-ioc/dest/injector.js','test/js/b.js'],
+            urls:['test/js/a.js','http://localhost:8080/node_modules/injector-ioc/dest/injector.js'],
             dependence:{
                 type:'js',
                 serial:true,
@@ -33,7 +33,7 @@
             type:'css',
             serial:true,
             //timeout:1000,
-            urls:['http://localhost:8080/app/common-comp/component/iframe.comp.css','http://localhost:8080/index.css']
+            urls:['http://localhost:8080/index.css']
         };
 
         var textResource = {
@@ -62,7 +62,8 @@
             for(var i = 0;i < 1;i++){
                 (function(){
                     var index = i;
-                    loader.load([jsonResource,textResource,imageResource],[cssResource,jsResource]).then(function () {
+                    //[jsonResource,textResource],[cssResource,jsResource]
+                    loader.load([jsonResource,textResource],[cssResource,jsResource]).then(function () {
                         console.log('loaded finish ! :' + index);
                         console.log(arguments);
                     },function(e){

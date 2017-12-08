@@ -8,7 +8,7 @@ class ResourceUrl{
         if(!baseURI){
             return urlDom.href;
         }
-        if(url.match('/^\//')){
+        if(url.match(/^\//)){
             return urlDom.href;
         }
         urlDom.href = url;

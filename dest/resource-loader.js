@@ -109,7 +109,7 @@ var ResourceUrl = (function () {
         if (!baseURI) {
             return urlDom.href;
         }
-        if (url.match('/^\//')) {
+        if (url.match(/^\//)) {
             return urlDom.href;
         }
         urlDom.href = url;
@@ -414,8 +414,8 @@ var CssLoader = (function (_super) {
             checkLoad();
         }
     };
-    CssLoader.prototype.load = function () {
-        var result = _super.prototype.load.call(this);
+    CssLoader.prototype._load = function () {
+        var result = _super.prototype._load.call(this);
         this.checkUseCssLoadPatch();
         return result;
     };

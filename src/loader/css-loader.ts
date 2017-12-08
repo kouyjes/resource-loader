@@ -70,8 +70,8 @@ class CssLoader extends ElementLoader {
             checkLoad();
         }
     }
-    load():Promise{
-        var result = super.load();
+    _load():Promise{
+        var result = super._load();
         this.checkUseCssLoadPatch();
         return result;
     }
