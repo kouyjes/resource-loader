@@ -155,9 +155,6 @@ class ResourceLoader {
     }
 
     parseUrl(url:String) {
-        if (!this.option.baseURI) {
-            return url;
-        }
         return ResourceUrl.parseUrl(this.option.baseURI, url);
     }
 

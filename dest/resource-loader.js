@@ -708,9 +708,6 @@ var ResourceLoader = (function () {
         });
     };
     ResourceLoader.prototype.parseUrl = function (url) {
-        if (!this.option.baseURI) {
-            return url;
-        }
         return ResourceUrl.parseUrl(this.option.baseURI, url);
     };
     ResourceLoader.prototype.__load = function (resource, loadEvents) {
