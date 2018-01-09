@@ -183,14 +183,13 @@ class ResourceLoader {
             });
             return loader;
         }
-
-        function loaderLoad(loader:Loader) {
-            var target = {
-                url: loader.finalURL()
-            };
+        function isPromise(param){
+            return typeof param === 'object' && typeof param.then === 'function';
+        }
+        function triggerLoadEvent(_promise,target){
             return new Promise(function (resolve, reject) {
                 ResourceLoader.triggerLoadEvent(LoaderEvent.LoadStart, target);
-                loader.load().then(function (result) {
+                _promise.then(function (result) {
                     loadEvents.push(result);
                     resolve(result);
                     ResourceLoader.triggerLoadEvent(LoaderEvent.LoadFinished, target);
@@ -200,24 +199,50 @@ class ResourceLoader {
                 });
             });
         }
-
+        function loaderLoad(loader:Loader) {
+            var target = {
+                url: loader.finalURL()
+            };
+            return triggerLoadEvent(loader.load(),target);
+        }
+        function promiseThen(_promise){
+            var target = {
+                url: _promise
+            };
+            return triggerLoadEvent(_promise,target);
+        }
         function initPromises() {
             var promises = [];
             if (resource.serial) {
                 resource.urls.forEach(function (url) {
-                    var loader = initiateLoader(url);
-                    if (promises.length > 0) {
-                        promises[0] = promises[0].then(function () {
-                            return loaderLoad(loader);
-                        });
-                    } else {
-                        promises.push(loaderLoad(loader));
+                    if(isPromise(url)){
+                        if (promises.length > 0) {
+                            promises[0] = promises[0].then(function () {
+                                return promiseThen(url);
+                            });
+                        } else {
+                            promises.push(promiseThen(url));
+                        }
+                    }else{
+                        var loader = initiateLoader(url);
+                        if (promises.length > 0) {
+                            promises[0] = promises[0].then(function () {
+                                return loaderLoad(loader);
+                            });
+                        } else {
+                            promises.push(loaderLoad(loader));
+                        }
                     }
+
                 });
             } else {
                 resource.urls.forEach(function (url) {
-                    var loader = initiateLoader(url);
-                    promises.push(loaderLoad(loader));
+                    if(isPromise(url)){
+                        promises.push(promiseThen(url));
+                    }else{
+                        promises.push(loaderLoad(initiateLoader(url)));
+                    }
+
                 });
             }
             return promises;
