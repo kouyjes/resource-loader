@@ -184,6 +184,9 @@ class ResourceLoader {
             return loader;
         }
         function isPromise(param){
+            if(typeof param === 'function'){
+                param = param();
+            }
             return typeof param === 'object' && typeof param.then === 'function';
         }
         function triggerLoadEvent(_promise,target){
