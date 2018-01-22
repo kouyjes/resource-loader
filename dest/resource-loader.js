@@ -733,10 +733,13 @@ var ResourceLoader = (function () {
             });
             return loader;
         };
-        function isPromise(param) {
+        function functionExecutor(param) {
             if (typeof param === 'function') {
                 param = param();
             }
+            return param;
+        }
+        function isPromise(param) {
             return typeof param === 'object' && typeof param.then === 'function';
         }
         function triggerLoadEvent(_promise, target) {
@@ -762,13 +765,16 @@ var ResourceLoader = (function () {
             var target = {
                 url: _promise
             };
+            if (typeof _promise === 'function') {
+                _promise = _promise();
+            }
             return triggerLoadEvent(_promise, target);
         }
         function initPromises() {
             var promises = [];
             if (resource.serial) {
                 resource.urls.forEach(function (url) {
-                    if (isPromise(url)) {
+                    if (isPromise(url) || isFunction(url)) {
                         if (promises.length > 0) {
                             promises[0] = promises[0].then(function () {
                                 return promiseThen(url);
@@ -793,7 +799,7 @@ var ResourceLoader = (function () {
             }
             else {
                 resource.urls.forEach(function (url) {
-                    if (isPromise(url)) {
+                    if (isPromise(url) || isFunction(url)) {
                         promises.push(promiseThen(url));
                     }
                     else {
