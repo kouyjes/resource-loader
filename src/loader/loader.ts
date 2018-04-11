@@ -65,9 +65,8 @@ abstract class Loader {
         var queryString = queryArray.join('&');
         if(this.option.url.indexOf('?') === -1){
             queryString = '?' + queryString;
-        }
-        if(!url.endsWith('&')){
-            url = url + '&';
+        }else if(!url.endsWith('&')){
+            queryString = '&' + queryString;
         }
         url = url + queryString;
         return url;
