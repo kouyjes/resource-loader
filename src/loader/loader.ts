@@ -38,7 +38,7 @@ abstract class Loader {
     }
     finalURL(){
         var url = this.option.url;
-        var params = Loader.GlobalParam || {};
+        var params = Object.assign({},Loader.GlobalParam);
         var userParams = this.option.params;
         if(userParams){
             Object.assign(params,userParams);
@@ -65,6 +65,9 @@ abstract class Loader {
         var queryString = queryArray.join('&');
         if(this.option.url.indexOf('?') === -1){
             queryString = '?' + queryString;
+        }
+        if(!url.endsWith('&')){
+            url = url + '&';
         }
         url = url + queryString;
         return url;
