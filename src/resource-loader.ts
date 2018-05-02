@@ -163,7 +163,13 @@ class ResourceLoader {
         var promise;
 
         if (resource.dependence) {
-            promise = this.__load(resource.dependence, loadEvents);
+            if(resource.dependence instanceof Array){
+                promise = Promise.all(resource.dependence.map(function(dependence){
+                    return this.__load(dependence, loadEvents);
+                }.bind(this)));
+            }else{
+                promise = this.__load(resource.dependence, loadEvents);
+            }
         }
 
         var initiateLoader = (url) => {
