@@ -281,6 +281,7 @@ var JsLoader = (function (_super) {
     };
     JsLoader.prototype.createDom = function () {
         this.el = document.createElement('script');
+        this.el.setAttribute('crossorigin', 'anonymous');
         this.el.src = this.finalURL();
     };
     JsLoader.prototype.load = function (force) {
