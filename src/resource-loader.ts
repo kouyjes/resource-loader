@@ -9,7 +9,7 @@ import {ImageLoader} from "./loader/image-loader";
 polyfill();
 interface ResourceLoaderOption {
     baseURI?:String;
-    params?:Object
+    params?:Object,
     timeout?:number;
 }
 /**
@@ -25,6 +25,8 @@ interface Resource {
     urls:String[];
     serial?:Boolean;
     dependence?:Resource;
+    params?:Object;
+    attributes?:Object;
     timeout?:number;
 }
 function isFunction(fn) {
@@ -182,9 +184,12 @@ class ResourceLoader {
             if (!loaderFn) {
                 throw new Error('resource type is not support !');
             }
+            var params = Object.assign({},this.option.params);
+            Object.assign(params,resource.params);
             var loader = new loaderFn({
                 url: _url,
-                params: this.option.params,
+                params: params,
+                attributes: resource.attributes,
                 timeout: resource.timeout
             });
             return loader;

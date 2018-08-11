@@ -26,9 +26,9 @@ class JsLoader extends ElementLoader {
         document.head.appendChild(el);
     }
     protected createDom(){
-        this.el = document.createElement('script');
-        this.el.setAttribute('crossorigin','anonymous');
-        this.el.src = this.finalURL();
+        var el = document.createElement('script');
+        el.src = this.finalURL();
+        this.el = el;
     }
     load(force = false):Promise{
 

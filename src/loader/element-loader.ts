@@ -25,6 +25,21 @@ abstract class ElementLoader extends Loader{
             target:this.el
         };
     }
+    protected appendAttributes(el){
+        if(!el){
+            return;
+        }
+        var attributes = this.option.attributes || {};
+        Object.keys(attributes).forEach(function(key){
+            if(typeof key !== 'string'){
+                return;
+            }
+            var value = attributes[key];
+            if(['number','boolean','string'].indexOf(typeof value) >= 0){
+                el.setAttribute(key,String(value));
+            }
+        });
+    }
     load():Promise{
         return this._load();
     }
@@ -36,6 +51,8 @@ abstract class ElementLoader extends Loader{
 
         this.createDom();
         var el = this.el;
+
+        this.appendAttributes(el);
 
         var onLoadFn, onErrorFn;
         var promise = new Promise((resolve, reject) => {

@@ -31,6 +31,10 @@
         };
         var cssResource = {
             type:'css',
+            attributes:{
+                kkk:123
+            },
+            params:{name:567},
             serial:true,
             //timeout:1000,
             urls:['http://localhost:8080/index.css']
@@ -63,7 +67,7 @@
                 (function(){
                     var index = i;
                     //[jsonResource,textResource],[cssResource,jsResource]
-                    loader.load([jsonResource,textResource],[cssResource,jsResource]).then(function () {
+                    loader.load([cssResource,jsResource]).then(function () {
                         console.log('loaded finish ! :' + index);
                         console.log(arguments);
                     },function(e){

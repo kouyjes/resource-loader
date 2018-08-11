@@ -12,6 +12,7 @@ enum LoaderEnvModel{
 interface LoaderOption{
     url:String;
     params?:Object;
+    attributes?:Object;
     timeout?:number;
 }
 
