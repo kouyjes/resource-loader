@@ -1,13 +1,13 @@
 {
   "name": "dom-resource-loader",
-  "version": "1.0.41",
+  "version": "1.0.42",
   "description": "js css loader",
   "main": "index.js",
   "directories": {
     "example": "example"
   },
   "scripts": {
-    "compile":"rollup -c",
+    "compile": "rollup -c",
     "build": "rollup -c && uglifyjs dest/resource-loader.js > dest/resource-loader.min.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -23,12 +23,9 @@
     "loader"
   ],
   "devDependencies": {
-    "rollup": "^0.36.3",
-    "rollup-plugin-scss": "^0.1.0",
+    "rollup": "^0.36.4",
     "rollup-plugin-typescript": "^0.8.1",
-    "rollup-plugin-uglify": "^1.0.1",
-    "ruby": "^0.6.1",
-    "scss": "^0.2.4"
+    "uglify-js": "^3.13.5"
   },
   "author": "kouyj",
   "license": "ISC",

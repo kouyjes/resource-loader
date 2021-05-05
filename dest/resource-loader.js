@@ -100,13 +100,16 @@ var Loader = (function () {
     return Loader;
 }());
 
-var urlDom = document.createElement('a');
+var urlDom;
 var ResourceUrl = (function () {
     function ResourceUrl() {
     }
     ResourceUrl.parseUrl = function (baseURI, url) {
         if (!url) {
             url = '';
+        }
+        if (!urlDom) {
+            urlDom = document.createElement('a');
         }
         urlDom.href = url;
         if (!baseURI) {
@@ -353,7 +356,8 @@ var JsLoader = (function (_super) {
                 try {
                     _this.el.parentNode.removeChild(_this.el);
                 }
-                catch (e) { }
+                catch (e) {
+                }
             }
             return d;
         });
