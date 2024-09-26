@@ -23,7 +23,7 @@
     "loader"
   ],
   "devDependencies": {
-    "rollup": "^0.36.4",
+    "rollup": "^2.79.2",
     "rollup-plugin-typescript": "^0.8.1",
     "uglify-js": "^3.13.5"
   },
